@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mundialito — maschile, femminile, misto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --field:#E7EDEC; --paper:#FFFFFF; --court:#0C4A5A; --court-soft:#13697F;
+  --ink:#0A1E24; --ink-soft:#52686E; --line:#CDD8D7; --ball:#D7E24A; --warn:#B4452F;
+  --radius:14px; --bar:70px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --field:#07171C; --paper:#0F2A33; --court:#9FD8E6; --court-soft:#6FB9CC;
+    --ink:#EAF4F5; --ink-soft:#9BB2B8; --line:#1E4653;
+  }
+}
+:root[data-theme="dark"]{
+  --field:#07171C; --paper:#0F2A33; --court:#9FD8E6; --court-soft:#6FB9CC;
+  --ink:#EAF4F5; --ink-soft:#9BB2B8; --line:#1E4653;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%;}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--field);color:var(--ink);
+  font-family:"Archivo","Helvetica Neue",Arial,sans-serif;font-size:16px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;}
+button,input,select{font:inherit;color:inherit;}
+button{cursor:pointer;}
+:focus-visible{outline:2px solid var(--court-soft);outline-offset:2px;border-radius:4px;}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px calc(var(--bar) + 40px);}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;margin:0 -16px 18px;
+  padding:12px 16px;background:var(--field);border-bottom:1px solid var(--line);}
+.top__row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.top__title{margin:0;font-size:21px;font-weight:700;letter-spacing:-.01em;}
+.top__meta{margin:2px 0 0;color:var(--ink-soft);font-size:13.5px;}
+.back{border:0;background:transparent;color:var(--court);padding:0 0 6px;font-size:14.5px;font-weight:600;}
+.champsel{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--paper);
+  border-radius:999px;padding:6px 12px 6px 8px;font-size:13.5px;font-weight:600;margin-bottom:9px;}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--court);flex:none;}
+.dot--f{background:#C2538B;} .dot--x{background:var(--ball);}
+.badge{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;
+  background:var(--court);color:var(--field);white-space:nowrap;}
+.badge--soft{background:transparent;color:var(--ink-soft);border:1px solid var(--line);font-weight:600;}
+.badge--x2{background:var(--ball);color:#0A1E24;}
+
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px;margin-bottom:12px;}
+.card--tap{display:block;width:100%;text-align:left;}
+.card__row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.card__t{font-size:17px;font-weight:600;}
+.card__s{font-size:13.5px;color:var(--ink-soft);margin-top:2px;}
+
+.block{margin:24px 0 0;}
+.block > h2{margin:0 0 4px;font-size:15px;font-weight:700;}
+.hint{margin:0 0 12px;font-size:13.5px;color:var(--ink-soft);}
+.note{font-size:13.5px;color:var(--ink-soft);margin:12px 0 0;}
+.empty{padding:26px 16px;text-align:center;color:var(--ink-soft);
+  border:1px dashed var(--line);border-radius:var(--radius);}
+
+.btn{display:block;width:100%;padding:15px 18px;border-radius:12px;border:1px solid var(--court);
+  background:var(--court);color:var(--field);font-size:16.5px;font-weight:600;text-align:center;}
+.btn[disabled]{opacity:.4;}
+.btn--ghost{background:transparent;color:var(--court);}
+.btn--quiet{background:transparent;color:var(--ink-soft);border-color:var(--line);}
+.btn--danger{background:transparent;color:var(--warn);border-color:var(--warn);}
+.btn+.btn{margin-top:10px;}
+.btn--sm{padding:10px 14px;font-size:14.5px;width:auto;display:inline-block;}
+.row2{display:flex;gap:8px;}
+.row2 > *{flex:1;}
+
+.fld{display:block;margin-bottom:12px;}
+.fld span{display:block;font-size:13.5px;color:var(--ink-soft);margin-bottom:5px;}
+.fld input,.fld select{width:100%;padding:13px 14px;border:1px solid var(--line);
+  border-radius:12px;background:var(--paper);}
+.chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{padding:9px 14px;border-radius:999px;border:1px solid var(--line);
+  background:var(--paper);font-size:15px;}
+.chip[aria-pressed="true"]{border-color:var(--court);background:var(--court);color:var(--field);}
+.stepper{display:flex;align-items:center;gap:12px;}
+.stepper button{width:46px;height:46px;border-radius:12px;border:1px solid var(--line);
+  background:var(--paper);font-size:22px;line-height:1;}
+.stepper b{font-size:22px;font-weight:700;font-stretch:112%;min-width:28px;text-align:center;}
+.stepper small{color:var(--ink-soft);font-size:13.5px;}
+
+.plist{list-style:none;margin:10px 0 0;padding:0;}
+.plist li{display:flex;align-items:center;gap:10px;padding:0;border-bottom:1px solid var(--line);}
+.plist li:last-child{border-bottom:0;}
+.ptap{flex:1;display:flex;align-items:center;gap:10px;padding:12px 2px;border:0;
+  background:transparent;text-align:left;}
+.ptap .nm{flex:1;font-size:16px;}
+.ptap .pt{font-size:13.5px;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
+.sx{font-size:11px;font-weight:700;color:var(--ink-soft);border:1px solid var(--line);
+  border-radius:5px;padding:0 4px;}
+.tick{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line);flex:none;
+  display:grid;place-items:center;font-size:13px;color:transparent;}
+.on .tick{background:var(--court);border-color:var(--court);color:var(--field);}
+.on .nm{font-weight:600;}
+.sel .ptap{background:color-mix(in srgb,var(--ball) 30%,transparent);border-radius:10px;}
+
+.pair{display:flex;align-items:center;gap:10px;background:var(--paper);border:1px solid var(--line);
+  border-radius:12px;padding:12px 14px;margin-bottom:8px;}
+.pair .seed{font-size:13px;font-weight:700;font-stretch:112%;color:var(--court);min-width:34px;
+  font-variant-numeric:tabular-nums;}
+.pair .nm{flex:1;font-size:15.5px;line-height:1.3;}
+.pair button{border:0;background:transparent;color:var(--ink-soft);font-size:13.5px;padding:4px;}
+
+.match{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+  margin-bottom:12px;overflow:hidden;}
+.match__head{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;
+  border-bottom:1px solid var(--line);}
+.match__n{font-weight:700;font-size:12.5px;letter-spacing:.06em;color:var(--court);font-stretch:112%;}
+.match__p{font-size:12.5px;color:var(--ink-soft);}
+.side{display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;border:0;
+  background:transparent;text-align:left;}
+.side .nm{flex:1;font-size:16px;line-height:1.3;}
+.side .seed{font-size:12.5px;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
+.side--win{background:color-mix(in srgb,var(--ball) 26%,transparent);}
+.side--win .nm{font-weight:700;}
+.net{height:9px;margin:0 14px;background:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 5px);
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+
+.table{width:100%;border-collapse:collapse;background:var(--paper);border:1px solid var(--line);
+  border-radius:var(--radius);overflow:hidden;}
+.table th{text-align:right;font-size:12px;font-weight:600;color:var(--ink-soft);padding:10px 8px;
+  border-bottom:1px solid var(--line);}
+.table th:first-child,.table td:first-child{text-align:left;padding-left:14px;}
+.table th:last-child,.table td:last-child{padding-right:14px;}
+.table td{text-align:right;padding:11px 8px;border-bottom:1px solid var(--line);
+  font-variant-numeric:tabular-nums;}
+.table tr:last-child td{border-bottom:0;}
+.table .nmc{display:flex;align-items:baseline;gap:9px;}
+.table .pos{font-size:13px;font-weight:700;font-stretch:112%;color:var(--ink-soft);min-width:20px;}
+.table .pts{font-size:18px;font-weight:700;font-stretch:112%;}
+.table .bn{color:var(--court);font-size:12px;font-weight:700;}
+.lead td{background:var(--paper);box-shadow:inset 3px 0 0 var(--ball);}
+.lead td:not(:first-child){box-shadow:none;}
+@supports (background:color-mix(in srgb,red 10%,blue)){
+  .lead td{background:color-mix(in srgb,var(--ball) 20%,var(--paper));}
+}
+.rowtap{cursor:pointer;}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(var(--bar) + 22px + env(safe-area-inset-bottom,0px));
+  background:var(--ink);color:var(--field);padding:11px 18px;border-radius:999px;
+  font-size:14.5px;z-index:40;box-shadow:0 6px 20px rgba(0,0,0,.22);max-width:90%;text-align:center;}
+
+.sheet{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.42);display:flex;align-items:flex-end;}
+.sheet__in{background:var(--field);width:100%;max-height:84vh;overflow:auto;border-radius:18px 18px 0 0;
+  padding:18px 16px calc(28px + env(safe-area-inset-bottom,0px));}
+.sheet h3{margin:0 0 4px;font-size:19px;}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;background:var(--paper);
+  border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);}
+.tabs button{flex:1;border:0;background:transparent;padding:12px 2px 14px;font-size:12px;
+  font-weight:600;color:var(--ink-soft);display:flex;flex-direction:column;align-items:center;gap:5px;}
+.tabs button[aria-current="true"]{color:var(--court);}
+.tabs svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round;}
+.hide{display:none !important;}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<nav class="tabs" id="tabs" aria-label="Sezioni">
+  <button data-tab="serate" aria-current="true">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/><path d="M3 12h3M18 12h3"/></svg>Serate</button>
+  <button data-tab="classifica">
+    <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V5M19 20v-7"/></svg>Classifica</button>
+  <button data-tab="giocatori">
+    <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c.8-3.3 3.5-5 6.5-5s5.7 1.7 6.5 5"/><path d="M17 8.5a3 3 0 0 1 0 5"/><path d="M18.5 20c-.3-1.6-1-2.9-2-3.8"/></svg>Giocatori</button>
+  <button data-tab="altro">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></svg>Altro</button>
+</nav>
+
+<script>
+"use strict";
+const SEED = {"players":[{"n":"Paolo Chiadò","s":"M"},{"n":"Alessandro Belloni","s":"M"},{"n":"Roberto Regini","s":"M"},{"n":"Mattia Spiga","s":"M"},{"n":"Simone Ferro","s":"M"},{"n":"Anthony Mercogliano","s":"M"},{"n":"Luca Valpreda","s":"M"},{"n":"Riccardo Ferrara","s":"M"},{"n":"Rossano Rossi","s":"M"},{"n":"Cristian Resta","s":"M"},{"n":"Lorenzo Bachis","s":"M"},{"n":"Antonio Ciurleo","s":"M"},{"n":"Antoni Navarro","s":"M"},{"n":"Simone Mercogliano","s":"M"},{"n":"Alessandro Allocco","s":"M"},{"n":"Alessandro Monaco","s":"M"},{"n":"Marco Pace","s":"M"},{"n":"Alan Lonardi","s":"M"},{"n":"Fabrizio Baima","s":"M"},{"n":"Lorenzo Debernardi","s":"M"},{"n":"Bersano Marco","s":"M"},{"n":"Gianluca Ferro","s":"M"},{"n":"Marco Sbarbaro","s":"M"},{"n":"Lorenzo Gaiero","s":"M"},{"n":"Lorenzo Bertetto","s":"M"},{"n":"Paolo Baima","s":"M"},{"n":"Luca paradisi","s":"M"},{"n":"Alberto Distefano","s":"M"},{"n":"Domenico Montefinese","s":"M"},{"n":"Domenico Zappavigna","s":"M"},{"n":"Denis Musuruana","s":"M"},{"n":"Riky Terenzi","s":"M"},{"n":"Emanuele Fornero","s":"M"},{"n":"Nicola Faralli","s":"M"},{"n":"Andretta Diego","s":"M"},{"n":"Andretta Daniele","s":"M"},{"n":"Gian Luca Pontonio","s":"M"},{"n":"Marco Campaci","s":"M"},{"n":"Luca Fornero","s":"M"},{"n":"Luca Galizia","s":"M"},{"n":"Alessandro Girotto","s":"M"},{"n":"Caggiano","s":"M"},{"n":"Riassetto","s":"M"},{"n":"Cervini Damian","s":"M"},{"n":"Sartore","s":"M"},{"n":"Fabrizio Bignone","s":"M"},{"n":"Stucchi Fabrizio","s":"M"},{"n":"Colombatto Alessandro","s":"M"},{"n":"Fabrizio Dezzani","s":"M"},{"n":"Edoardo Morgandi","s":"M"},{"n":"Giovanni Izzo","s":"M"},{"n":"Alessio Todesco","s":"M"},{"n":"De Tommaso Walter","s":"M"},{"n":"Picciotto","s":"M"},{"n":"Matti Cigno","s":"M"},{"n":"Ale Lagio","s":"M"},{"n":"Simo Rizzini","s":"M"},{"n":"Cantone Giulio","s":"M"},{"n":"Vecchio Gabriel","s":"M"},{"n":"Bili Antonella","s":"F"},{"n":"Edna Silva","s":"F"},{"n":"Faletti Paola","s":"F"},{"n":"Guglielmetto M. Patty","s":"F"},{"n":"Piludu Barbara","s":"F"},{"n":"Santacroce Libera","s":"F"},{"n":"Airola Roberta","s":"F"},{"n":"Catalano Adriana","s":"F"},{"n":"Olivetti Maria","s":"F"},{"n":"Airola Laura","s":"F"},{"n":"Bortolotti Laura","s":"F"},{"n":"Piazzo Maria Cristina","s":"F"},{"n":"Cavuoto Federica","s":"F"},{"n":"Pagliasso Paola","s":"F"},{"n":"Sirico Cristina","s":"F"},{"n":"Albini Deborah","s":"F"},{"n":"Oleari Simona","s":"F"},{"n":"Alice Anese","s":"F"},{"n":"Violino Luisella","s":"F"},{"n":"Simona P.","s":"F"},{"n":"Geors Luciana","s":"F"},{"n":"Loprete Lucia","s":"F"},{"n":"Gabriella Galetto","s":"F"},{"n":"Sonia","s":"F"},{"n":"Fabio Procchio","s":"M"},{"n":"Giovanni Grosso","s":"M"},{"n":"Elena Musuruana","s":"F"},{"n":"Bruno Ubaudi","s":"M"},{"n":"Tatiana Dalmasso","s":"F"},{"n":"Davide Zappalà","s":"M"},{"n":"Patrizia G","s":"F"},{"n":"Chiara","s":"F"},{"n":"Giancarlo Capucchio","s":"M"},{"n":"Cristian Geninatti","s":"M"},{"n":"Laura A","s":"F"},{"n":"Leonardo Distefano","s":"M"},{"n":"Sergio Giraudo","s":"M"},{"n":"Antonio Manuele","s":"M"},{"n":"Valentina Gentile","s":"F"},{"n":"Giacomo","s":"M"},{"n":"Bartolini Paolo","s":"M"},{"n":"Diego Lava","s":"M"},{"n":"Ivano Chiatello","s":"M"},{"n":"Salvatore Ferruggio","s":"M"},{"n":"Margherita Cerutti","s":"F"},{"n":"Katia Feira","s":"F"},{"n":"Stefano Felicetti","s":"M"},{"n":"Debora Corcelli","s":"F"},{"n":"Marco","s":"M"},{"n":"Marcella Suppo","s":"F"},{"n":"Daniela Rocchietti","s":"F"},{"n":"Dario Anese","s":"M"},{"n":"Davide Aimar","s":"M"}],"champs":[{"name":"Mundialito maschile","ed":"2ª edizione","type":"maschile","soglia":8,"bonus":5,"carry":{"Paolo Chiadò":{"pts":84,"pres":4},"Alessandro Belloni":{"pts":74,"pres":4},"Roberto Regini":{"pts":68,"pres":3},"Mattia Spiga":{"pts":68,"pres":3},"Simone Ferro":{"pts":62,"pres":4},"Anthony Mercogliano":{"pts":54,"pres":3},"Luca Valpreda":{"pts":54,"pres":2},"Riccardo Ferrara":{"pts":48,"pres":3},"Rossano Rossi":{"pts":48,"pres":1},"Cristian Resta":{"pts":48,"pres":1},"Lorenzo Bachis":{"pts":42,"pres":4},"Antonio Ciurleo":{"pts":40,"pres":2},"Antoni Navarro":{"pts":38,"pres":2},"Simone Mercogliano":{"pts":38,"pres":3},"Alessandro Allocco":{"pts":36,"pres":4},"Alessandro Monaco":{"pts":34,"pres":3},"Marco Pace":{"pts":30,"pres":4},"Alan Lonardi":{"pts":28,"pres":2},"Fabrizio Baima":{"pts":20,"pres":3},"Lorenzo Debernardi":{"pts":20,"pres":1},"Bersano Marco":{"pts":18,"pres":3},"Gianluca Ferro":{"pts":16,"pres":1},"Marco Sbarbaro":{"pts":16,"pres":1},"Lorenzo Gaiero":{"pts":14,"pres":2},"Lorenzo Bertetto":{"pts":12,"pres":2},"Paolo Baima":{"pts":12,"pres":2},"Luca paradisi":{"pts":12,"pres":1},"Alberto Distefano":{"pts":12,"pres":1},"Domenico Montefinese":{"pts":10,"pres":1},"Domenico Zappavigna":{"pts":10,"pres":2},"Denis Musuruana":{"pts":10,"pres":1},"Riky Terenzi":{"pts":10,"pres":1},"Emanuele Fornero":{"pts":10,"pres":1},"Nicola Faralli":{"pts":10,"pres":1},"Andretta Diego":{"pts":8,"pres":1},"Andretta Daniele":{"pts":8,"pres":1},"Gian Luca Pontonio":{"pts":8,"pres":1},"Marco Campaci":{"pts":8,"pres":1},"Luca Fornero":{"pts":8,"pres":2},"Luca Galizia":{"pts":8,"pres":1},"Alessandro Girotto":{"pts":8,"pres":1},"Caggiano":{"pts":8,"pres":1},"Riassetto":{"pts":8,"pres":1},"Cervini Damian":{"pts":6,"pres":1},"Sartore":{"pts":6,"pres":1},"Fabrizio Bignone":{"pts":6,"pres":2},"Stucchi Fabrizio":{"pts":6,"pres":1},"Colombatto Alessandro":{"pts":6,"pres":1},"Fabrizio Dezzani":{"pts":4,"pres":1},"Edoardo Morgandi":{"pts":4,"pres":1},"Giovanni Izzo":{"pts":4,"pres":1},"Alessio Todesco":{"pts":4,"pres":1}}},{"name":"Mundialito femminile","ed":"1ª edizione","type":"femminile","soglia":4,"bonus":5,"carry":{"Bili Antonella":{"pts":28,"pres":2},"Edna Silva":{"pts":24,"pres":2},"Faletti Paola":{"pts":16,"pres":2},"Guglielmetto M. Patty":{"pts":14,"pres":1},"Piludu Barbara":{"pts":14,"pres":1},"Santacroce Libera":{"pts":14,"pres":2},"Airola Roberta":{"pts":12,"pres":1},"Catalano Adriana":{"pts":12,"pres":1},"Olivetti Maria":{"pts":10,"pres":2},"Airola Laura":{"pts":10,"pres":1},"Bortolotti Laura":{"pts":10,"pres":1},"Piazzo Maria Cristina":{"pts":10,"pres":1},"Cavuoto Federica":{"pts":8,"pres":1},"Pagliasso Paola":{"pts":8,"pres":1},"Sirico Cristina":{"pts":6,"pres":1},"Albini Deborah":{"pts":6,"pres":1},"Oleari Simona":{"pts":6,"pres":1},"Alice Anese":{"pts":6,"pres":1},"Violino Luisella":{"pts":4,"pres":1},"Simona P.":{"pts":4,"pres":1},"Geors Luciana":{"pts":2,"pres":1},"Loprete Lucia":{"pts":2,"pres":1},"Gabriella Galetto":{"pts":2,"pres":1}}},{"name":"Mundialito misto","ed":"1ª edizione","type":"misto","soglia":5,"bonus":5,"carry":{"Bili Antonella":{"pts":72,"pres":3},"Roberto Regini":{"pts":68,"pres":3},"Edna Silva":{"pts":60,"pres":3},"Violino Luisella":{"pts":56,"pres":2},"Sonia":{"pts":52,"pres":1},"Fabio Procchio":{"pts":52,"pres":1},"Giovanni Grosso":{"pts":50,"pres":2},"Rossano Rossi":{"pts":48,"pres":1},"Faletti Paola":{"pts":44,"pres":3},"Olivetti Maria":{"pts":44,"pres":3},"Elena Musuruana":{"pts":44,"pres":1},"Bruno Ubaudi":{"pts":44,"pres":1},"Gabriella Galetto":{"pts":38,"pres":2},"Luca paradisi":{"pts":36,"pres":1},"Geors Luciana":{"pts":30,"pres":2},"Alberto Distefano":{"pts":30,"pres":2},"Tatiana Dalmasso":{"pts":28,"pres":2},"Davide Zappalà":{"pts":24,"pres":1},"Alessio Todesco":{"pts":22,"pres":2},"Patrizia G":{"pts":20,"pres":1},"Edoardo Morgandi":{"pts":20,"pres":1},"Chiara":{"pts":20,"pres":1},"Giancarlo Capucchio":{"pts":20,"pres":1},"Cristian Geninatti":{"pts":18,"pres":1},"Laura A":{"pts":18,"pres":1},"Paolo Baima":{"pts":18,"pres":1},"Leonardo Distefano":{"pts":16,"pres":1},"Vecchio Gabriel":{"pts":16,"pres":1},"Stucchi Fabrizio":{"pts":14,"pres":1},"Santacroce Libera":{"pts":12,"pres":1},"Sergio Giraudo":{"pts":12,"pres":1},"Antonio Manuele":{"pts":12,"pres":1},"Valentina Gentile":{"pts":12,"pres":1},"Giacomo":{"pts":12,"pres":1},"Loprete Lucia":{"pts":10,"pres":1},"Bartolini Paolo":{"pts":10,"pres":1},"Oleari Simona":{"pts":10,"pres":2},"Diego Lava":{"pts":10,"pres":2},"Antoni Navarro":{"pts":8,"pres":1},"Ivano Chiatello":{"pts":6,"pres":1},"Salvatore Ferruggio":{"pts":6,"pres":1},"Margherita Cerutti":{"pts":6,"pres":1},"Katia Feira":{"pts":4,"pres":1},"Stefano Felicetti":{"pts":4,"pres":1},"Debora Corcelli":{"pts":4,"pres":1},"Marco":{"pts":4,"pres":1}}}]};
+const KEY = "mundialito.v2";
+const app = document.getElementById("app");
+const tabsEl = document.getElementById("tabs");
+
+let D = null, tab = "serate", openEvent = null, step = "presenti";
+let sel = [], search = "", sheet = null;
+
+const uid = () => Math.random().toString(36).slice(2,9);
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const P = id => D.players.find(p => p.id === id) || {name:"?", sex:"M"};
+const nm = id => P(id).name;
+const oggi = () => new Date().toISOString().slice(0,10);
+const dataIt = s => { if(!s) return ""; const [a,m,g]=s.split("-"); return g+"/"+m+"/"+a.slice(2); };
+const C = () => D.champs.find(c => c.id === D.cur) || D.champs[0];
+const EV = id => C().events.find(e => e.id === id);
+const tipoLabel = t => t === "femminile" ? "Femminile" : t === "misto" ? "Misto" : "Maschile";
+const dotCls = t => t === "femminile" ? "dot dot--f" : t === "misto" ? "dot dot--x" : "dot";
+const eligible = p => { const t = C().type;
+  return !p.archived && (t === "misto" || (t === "maschile" ? p.sex === "M" : p.sex === "F")); };
+
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(D)); }catch(e){ toast("Memoria piena: esporta un backup"); } }
+function load(){ try{ const r = localStorage.getItem(KEY); if(r){ const d = JSON.parse(r); if(d && d.champs) return d; } }catch(e){} return null; }
+function fresh(){
+  const d = {v:2, settings:{campi:5}, players:[], champs:[], cur:null};
+  const byName = {};
+  (SEED && SEED.players || []).forEach(p => {
+    const id = uid(); d.players.push({id, name:p.n, sex:p.s}); byName[p.n] = id;
+  });
+  (SEED && SEED.champs || []).forEach(c => {
+    const ch = {id:uid(), name:c.name, ed:c.ed, type:c.type, soglia:c.soglia, bonus:c.bonus, carry:{}, events:[]};
+    Object.keys(c.carry || {}).forEach(n => { if(byName[n]) ch.carry[byName[n]] = c.carry[n]; });
+    d.champs.push(ch);
+  });
+  if(!d.champs.length) d.champs.push({id:uid(), name:"Mundialito", ed:"1ª edizione", type:"maschile",
+    soglia:8, bonus:5, carry:{}, events:[]});
+  d.cur = d.champs[0].id;
+  return d;
+}
+let tt;
+function toast(m){
+  document.querySelectorAll(".toast").forEach(n=>n.remove());
+  const el = document.createElement("div");
+  el.className = "toast"; el.textContent = m; el.setAttribute("role","status");
+  document.body.appendChild(el); clearTimeout(tt); tt = setTimeout(()=>el.remove(), 2600);
+}
+
+/* ---------- punteggi ---------- */
+function placements(ev){
+  const out = [];
+  ev.matches.forEach(m => {
+    if(m.pb === null || m.pb === undefined){ out.push(m.pa); return; }
+    const a = m.winner === "a";
+    out.push(a ? m.pa : m.pb); out.push(a ? m.pb : m.pa);
+  });
+  return out;
+}
+function eventPoints(ev){
+  const out = {};
+  if(ev.status !== "chiuso") return out;
+  const N = ev.pairs.length;
+  placements(ev).forEach((pi, k) => {
+    const pts = (N - k) * 2 * (ev.mult || 1);
+    ev.pairs[pi].forEach(id => out[id] = pts);
+  });
+  return out;
+}
+const matchDone = m => (m.pb === null || m.pb === undefined) || m.winner === "a" || m.winner === "b";
+const evReady = ev => ev.matches.length > 0 && ev.matches.every(matchDone);
+function ordered(ch){ return [...(ch||C()).events].sort((a,b) => (a.date||"").localeCompare(b.date||"") || a.created - b.created); }
+
+function totals(upTo, ch){
+  ch = ch || C();
+  const t = {};
+  D.players.forEach(p => { const c = ch.carry[p.id] || {}; t[p.id] = {pts:c.pts||0, pres:c.pres||0}; });
+  for(const ev of ordered(ch)){
+    if(upTo && ev.id === upTo) break;
+    if(ev.status !== "chiuso") continue;
+    const pp = eventPoints(ev);
+    Object.keys(pp).forEach(id => { if(t[id]){ t[id].pts += pp[id]; t[id].pres += 1; } });
+  }
+  return t;
+}
+function classifica(ch){
+  ch = ch || C();
+  const t = totals(null, ch);
+  return D.players.map(p => {
+    const bonus = t[p.id].pres > ch.soglia ? ch.bonus : 0;
+    return {id:p.id, name:p.name, sex:p.sex, pts:t[p.id].pts, pres:t[p.id].pres, bonus, tot:t[p.id].pts + bonus};
+  }).sort((a,b) => b.tot - a.tot || b.pres - a.pres || a.name.localeCompare(b.name));
+}
+
+/* ---------- tabellone ---------- */
+function buildBoard(ev){
+  const t = totals(ev.id);
+  ev.seeds = {};
+  ev.pairs.forEach((pr,i) => ev.seeds[i] = (t[pr[0]]?t[pr[0]].pts:0) + (t[pr[1]]?t[pr[1]].pts:0));
+  const order = ev.pairs.map((_,i) => i).sort((a,b) => ev.seeds[b] - ev.seeds[a]);
+  ev.matches = [];
+  for(let k=0; k<order.length; k+=2)
+    ev.matches.push({pa:order[k], pb:(k+1 < order.length ? order[k+1] : null), winner:null});
+}
+function campoLabel(ev, i){
+  const c = ev.campi || D.settings.campi || 5;
+  const turno = Math.floor(i / c) + 1;
+  return "CAMPO " + (i % c + 1) + (turno > 1 ? " · " + turno + "° TURNO" : "");
+}
+function autoPairs(ev, modo){
+  const t = totals(ev.id);
+  const pres = [...(ev.presenti || [])];
+  const pt = id => t[id] ? t[id].pts : 0;
+  const mix = a => { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+  ev.pairs = [];
+  if(C().type === "misto"){
+    let U = pres.filter(id => P(id).sex === "M"), F = pres.filter(id => P(id).sex === "F");
+    if(modo === "cas"){ mix(U); mix(F); } else { U.sort((a,b)=>pt(b)-pt(a)); F.sort((a,b)=>pt(b)-pt(a)); }
+    if(modo === "bil") F.reverse();
+    const n = Math.min(U.length, F.length);
+    for(let i=0;i<n;i++) ev.pairs.push([F[i], U[i]]);
+  } else {
+    let ids = pres.slice();
+    if(modo === "cas") mix(ids); else ids.sort((a,b)=>pt(b)-pt(a));
+    if(modo === "bil"){ while(ids.length >= 2) ev.pairs.push([ids.shift(), ids.pop()]); }
+    else for(let i=0; i+1<ids.length; i+=2) ev.pairs.push([ids[i], ids[i+1]]);
+  }
+}
+
+/* ============================ RENDER ============================ */
+function render(){
+  tabsEl.querySelectorAll("button").forEach(b => b.setAttribute("aria-current", String(b.dataset.tab === tab)));
+  if(openEvent) renderEvento();
+  else if(tab === "serate") renderSerate();
+  else if(tab === "classifica") renderClassifica();
+  else if(tab === "giocatori") renderGiocatori();
+  else renderAltro();
+  renderSheet();
+}
+function champBtn(){
+  const c = C();
+  return `<button class="champsel" data-act="champs"><span class="${dotCls(c.type)}"></span>${esc(c.name)} · ${esc(c.ed)} ▾</button>`;
+}
+
+/* --- serate --- */
+function renderSerate(){
+  const c = C(), list = ordered().reverse();
+  app.innerHTML = `
+  <header class="top">${champBtn()}
+    <div class="top__row"><div>
+      <h1 class="top__title">Serate</h1>
+      <p class="top__meta">${c.events.length} in archivio · ${tipoLabel(c.type).toLowerCase()}</p>
+    </div></div></header>
+  <button class="btn" data-act="newev">Nuova serata</button>
+  <div class="block">
+  ${list.length ? list.map(e => `
+    <button class="card card--tap" data-act="openev" data-id="${e.id}">
+      <div class="card__row"><span class="card__t">${esc(e.name)}</span>
+        <span>${e.mult===2?'<span class="badge badge--x2">x2</span> ':''}<span class="badge ${e.status==="chiuso"?"":"badge--soft"}">${e.status==="chiuso"?"chiusa":"aperta"}</span></span></div>
+      <p class="card__s">${dataIt(e.date)} · ${e.pairs.length} copp${e.pairs.length===1?"ia":"ie"}</p>
+    </button>`).join("")
+  : `<p class="empty">Nessuna serata in questo campionato.</p>`}
+  </div>`;
+}
+
+/* --- evento --- */
+function renderEvento(){
+  const ev = EV(openEvent);
+  if(!ev){ openEvent = null; return render(); }
+  if(ev.status === "chiuso") return renderEventoChiuso(ev);
+  const misto = C().type === "misto";
+  const presenti = ev.presenti || [];
+  const inPair = new Set(ev.pairs.flat());
+  let body = "";
+
+  if(step === "presenti"){
+    const q = search.toLowerCase();
+    const list = D.players.filter(p => eligible(p) && p.name.toLowerCase().includes(q))
+      .sort((a,b) => a.name.localeCompare(b.name));
+    const t = totals(ev.id);
+    const nF = presenti.filter(id => P(id).sex === "F").length;
+    const sub = misto ? `${nF} donne · ${presenti.length-nF} uomini` :
+      `${presenti.length} selezionati${presenti.length%2?" · dispari, uno resta fuori":""}`;
+    body = `
+    <div class="block"><h2>Chi c'è stasera</h2><p class="hint">${sub}</p>
+    <label class="fld"><input id="q" placeholder="Cerca un nome" value="${esc(search)}" data-act="search" autocomplete="off"></label>
+    <form class="row2" data-act="addp">
+      <input id="newp" placeholder="Giocatore nuovo" autocomplete="off" enterkeyhint="done"
+        style="padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);">
+      ${misto?`<select id="newsex" style="flex:0 0 86px;padding:13px 8px;border:1px solid var(--line);border-radius:12px;background:var(--paper);">
+        <option value="F">Donna</option><option value="M">Uomo</option></select>`:""}
+      <button class="btn btn--ghost btn--sm" type="submit" style="flex:0 0 auto;">Aggiungi</button>
+    </form>
+    <ul class="plist">${list.map(p => `<li class="${presenti.includes(p.id)?"on":""}">
+      <button class="ptap" data-act="togglep" data-id="${p.id}">
+        <span class="tick">✓</span><span class="nm">${esc(p.name)}</span>
+        ${misto?`<span class="sx">${p.sex}</span>`:""}
+        <span class="pt">${t[p.id]?t[p.id].pts:0} pt</span></button></li>`).join("")}</ul></div>
+    <div class="block"><button class="btn" data-act="step" data-v="coppie" ${presenti.length>=4?"":"disabled"}>Passa alle coppie</button></div>`;
+  }
+
+  if(step === "coppie"){
+    const t = totals(ev.id);
+    const liberi = presenti.filter(id => !inPair.has(id));
+    body = `
+    <div class="block"><h2>Coppie</h2>
+    <p class="hint">${misto?"Ogni coppia è una donna e un uomo. ":""}Tocca due nomi per abbinarli, o lascia fare all'app.</p>
+    <div class="row2">
+      <button class="btn btn--ghost btn--sm" data-act="auto" data-m="bil">Bilanciate</button>
+      <button class="btn btn--ghost btn--sm" data-act="auto" data-m="liv">Per livello</button>
+      <button class="btn btn--ghost btn--sm" data-act="auto" data-m="cas">A caso</button>
+    </div>
+    ${ev.pairs.length?`<div class="block">${ev.pairs.map((pr,i)=>`
+      <div class="pair"><span class="seed">${(t[pr[0]]?t[pr[0]].pts:0)+(t[pr[1]]?t[pr[1]].pts:0)}</span>
+        <span class="nm">${esc(nm(pr[0]))}<br>${esc(nm(pr[1]))}</span>
+        <button data-act="unpair" data-i="${i}">Sciogli</button></div>`).join("")}</div>`:""}
+    ${liberi.length?`<div class="block"><h2>Ancora liberi</h2><ul class="plist">${liberi.map(id=>`
+      <li class="${sel.includes(id)?"sel":""}"><button class="ptap" data-act="pick" data-id="${id}">
+        <span class="nm">${esc(nm(id))}</span>${misto?`<span class="sx">${P(id).sex}</span>`:""}
+        <span class="pt">${t[id]?t[id].pts:0} pt</span></button></li>`).join("")}</ul></div>`:""}
+    </div>
+    <div class="block">
+      <button class="btn" data-act="board" ${ev.pairs.length>=2?"":"disabled"}>Genera il tabellone</button>
+      <button class="btn btn--quiet" data-act="step" data-v="presenti">Torna ai presenti</button>
+    </div>`;
+  }
+
+  if(step === "tabellone"){
+    body = `<div class="block"><h2>Tabellone</h2>
+    <p class="hint">Coppie ordinate per somma punti. Tocca chi ha vinto.</p>
+    ${ev.matches.map((m,i) => matchCard(ev,m,i)).join("")}</div>
+    <div class="block">
+      <button class="btn btn--ghost" data-act="loca">Crea la locandina</button>
+      <button class="btn" data-act="close" ${evReady(ev)?"":"disabled"}>Chiudi la serata e assegna i punti</button>
+      ${!evReady(ev)?`<p class="note">Segna il vincitore di ogni campo.</p>`:""}
+      <button class="btn btn--quiet" data-act="step" data-v="coppie">Modifica le coppie</button>
+    </div>`;
+  }
+
+  app.innerHTML = `
+  <header class="top"><button class="back" data-act="home">← Serate</button>
+    <div class="top__row"><div><h1 class="top__title">${esc(ev.name)}</h1>
+      <p class="top__meta">${dataIt(ev.date)}${ev.mult===2?" · vale doppio":""} · ${ev.campi} camp${ev.campi===1?"o":"i"}</p></div>
+      <button class="badge badge--soft" data-act="editev">Modifica</button></div>
+  </header>${body}`;
+}
+
+function matchCard(ev,m,i){
+  const A = ev.pairs[m.pa], B = (m.pb===null||m.pb===undefined) ? null : ev.pairs[m.pb];
+  const sA = ev.seeds ? ev.seeds[m.pa] : 0, sB = B && ev.seeds ? ev.seeds[m.pb] : 0;
+  const pos = 2*i+1;
+  return `<article class="match">
+    <div class="match__head"><span class="match__n">${campoLabel(ev,i)}</span>
+      <span class="match__p">${B?`${pos}° e ${pos+1}° posto`:`${pos}° posto`}</span></div>
+    <button class="side ${m.winner==="a"?"side--win":""}" data-act="win" data-i="${i}" data-s="a">
+      <span class="nm">${esc(nm(A[0]))} · ${esc(nm(A[1]))}</span><span class="seed">${sA}</span></button>
+    ${B?`<div class="net"></div>
+    <button class="side ${m.winner==="b"?"side--win":""}" data-act="win" data-i="${i}" data-s="b">
+      <span class="nm">${esc(nm(B[0]))} · ${esc(nm(B[1]))}</span><span class="seed">${sB}</span></button>`
+    :`<div class="net"></div><div class="side"><span class="nm" style="color:var(--ink-soft)">riposo</span></div>`}
+  </article>`;
+}
+
+function renderEventoChiuso(ev){
+  const pts = eventPoints(ev), pl = placements(ev);
+  app.innerHTML = `
+  <header class="top"><button class="back" data-act="home">← Serate</button>
+    <div class="top__row"><div><h1 class="top__title">${esc(ev.name)}</h1>
+      <p class="top__meta">${dataIt(ev.date)}${ev.mult===2?" · punti doppi":""} · ${ev.pairs.length} coppie</p></div>
+      <span class="badge">chiusa</span></div></header>
+  <table class="table"><thead><tr><th>Coppia</th><th>Punti</th></tr></thead><tbody>
+    ${pl.map((pi,k)=>{ const pr = ev.pairs[pi];
+      return `<tr class="${k===0?"lead":""}">
+        <td><span class="nmc"><span class="pos">${k+1}°</span>${esc(nm(pr[0]))} · ${esc(nm(pr[1]))}</span></td>
+        <td class="pts">${pts[pr[0]]||0}</td></tr>`;}).join("")}
+  </tbody></table>
+  <div class="block">
+    <button class="btn btn--ghost" data-act="loca">Crea la locandina</button>
+    <button class="btn btn--ghost" data-act="shareev">Copia il risultato</button>
+    <button class="btn btn--quiet" data-act="reopen">Riapri per correggere</button>
+    <button class="btn btn--danger" data-act="delev">Elimina la serata</button>
+  </div>`;
+}
+
+/* --- classifica --- */
+function renderClassifica(){
+  const c = C(), list = classifica().filter(r => r.pres > 0);
+  app.innerHTML = `
+  <header class="top">${champBtn()}
+    <div class="top__row"><div><h1 class="top__title">Classifica</h1>
+    <p class="top__meta">Bonus +${c.bonus} oltre ${c.soglia} presenze</p></div></div></header>
+  ${list.length?`<table class="table"><thead><tr><th>Giocatore</th><th>Punti</th><th>Pres.</th></tr></thead>
+   <tbody>${list.map((r,i)=>`<tr class="rowtap ${i===0?"lead":""}" data-act="player" data-id="${r.id}">
+      <td><span class="nmc"><span class="pos">${i+1}</span>${esc(r.name)}</span></td>
+      <td class="pts">${r.tot}${r.bonus?` <span class="bn">+${r.bonus}</span>`:""}</td>
+      <td>${r.pres}</td></tr>`).join("")}</tbody></table>
+  <button class="btn btn--ghost" style="margin-top:16px" data-act="shareclass">Copia la classifica</button>`
+  :`<p class="empty">Ancora nessuna serata chiusa qui.</p>`}`;
+}
+
+/* --- giocatori --- */
+function renderGiocatori(){
+  const c = C(), t = totals(), q = search.toLowerCase();
+  const list = D.players.filter(p => eligible(p) && p.name.toLowerCase().includes(q))
+    .sort((a,b) => a.name.localeCompare(b.name));
+  const fuori = D.players.filter(p => p.archived).length;
+  app.innerHTML = `
+  <header class="top">${champBtn()}
+    <div class="top__row"><div><h1 class="top__title">Giocatori</h1>
+    <p class="top__meta">${list.length} disponibili per questo campionato${fuori?` · ${fuori} ritirati`:""}</p></div></div></header>
+  <label class="fld"><input id="q" placeholder="Cerca un nome" value="${esc(search)}" data-act="search" autocomplete="off"></label>
+  <form class="row2" data-act="addp2">
+    <input id="newp2" placeholder="Nuovo giocatore" autocomplete="off" enterkeyhint="done"
+      style="padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);">
+    ${c.type==="misto"?`<select id="newsex2" style="flex:0 0 86px;padding:13px 8px;border:1px solid var(--line);border-radius:12px;background:var(--paper);">
+      <option value="F">Donna</option><option value="M">Uomo</option></select>`:""}
+    <button class="btn btn--ghost btn--sm" type="submit" style="flex:0 0 auto;">Aggiungi</button>
+  </form>
+  <ul class="plist">${list.map(p=>`<li><button class="ptap" data-act="player" data-id="${p.id}">
+    <span class="nm">${esc(p.name)}</span>${c.type==="misto"?`<span class="sx">${p.sex}</span>`:""}
+    <span class="pt">${t[p.id].pts} pt · ${t[p.id].pres} pres.</span></button></li>`).join("")}</ul>`;
+}
+
+/* --- altro --- */
+function renderAltro(){
+  const c = C();
+  app.innerHTML = `
+  <header class="top">${champBtn()}
+    <div class="top__row"><h1 class="top__title">Impostazioni</h1></div></header>
+  <div class="block"><h2>Questo campionato</h2>
+    <label class="fld"><span>Nome</span><input value="${esc(c.name)}" data-act="cname"></label>
+    <label class="fld"><span>Edizione</span><input value="${esc(c.ed)}" data-act="ced"></label>
+    <p class="hint">Tipo: ${tipoLabel(c.type)} — non si cambia dopo le prime serate.</p>
+    <h2 style="margin-top:18px">Bonus presenze</h2>
+    <div class="stepper" style="margin-bottom:10px">
+      <button data-act="cset" data-k="soglia" data-v="-1">−</button><b>${c.soglia}</b>
+      <button data-act="cset" data-k="soglia" data-v="1">+</button><small>presenze minime</small></div>
+    <div class="stepper">
+      <button data-act="cset" data-k="bonus" data-v="-1">−</button><b>${c.bonus}</b>
+      <button data-act="cset" data-k="bonus" data-v="1">+</button><small>punti bonus</small></div>
+  </div>
+  <div class="block"><h2>Campi del circolo</h2>
+    <div class="stepper"><button data-act="set" data-k="campi" data-v="-1">−</button><b>${D.settings.campi}</b>
+      <button data-act="set" data-k="campi" data-v="1">+</button><small>valore di partenza</small></div></div>
+  <div class="block"><h2>Locandina</h2>
+    <p class="hint">Logo e scritta usati nell'immagine della serata.</p>
+    <label class="btn btn--quiet" style="cursor:pointer">${D.settings.logo?"Cambia il logo":"Carica il logo"}
+      <input type="file" accept="image/*" data-act="logo" style="display:none"></label>
+    ${D.settings.logo?`<button class="btn btn--quiet" data-act="dellogo">Togli il logo</button>`:""}
+    <label class="fld" style="margin-top:12px"><span>Scritta in fondo</span>
+      <input value="${esc(D.settings.firma||"")}" data-act="firma" placeholder="Sport Club San Carlo Canavese"></label>
+  </div>
+  <div class="block"><h2>Campionati</h2>
+    <button class="btn btn--ghost" data-act="newchamp">Crea un campionato</button>
+    <p class="note">Serve per una nuova edizione: l'anagrafica resta la stessa, i punti ripartono da zero.</p></div>
+  <div class="block"><h2>Backup</h2>
+    <p class="hint">Tutto sta in questo browser. Esporta ogni tanto: il file si reimporta qui o su un altro telefono.</p>
+    <button class="btn btn--ghost" data-act="export">Esporta tutto</button>
+    <label class="btn btn--quiet" style="cursor:pointer">Importa un backup
+      <input type="file" accept="application/json,.json" data-act="import" style="display:none"></label>
+    <button class="btn btn--danger" data-act="wipe">Azzera tutto</button></div>`;
+}
+
+/* --- fogli --- */
+function renderSheet(){
+  document.querySelectorAll(".sheet").forEach(n => n.remove());
+  if(!sheet) return;
+  let inner = "";
+
+  if(sheet.tipo === "champs"){
+    inner = `<h3>Campionati</h3><p class="hint">L'anagrafica è condivisa, i punti no.</p>
+      ${D.champs.map(c => `<button class="card card--tap" data-act="setchamp" data-id="${c.id}">
+        <div class="card__row"><span class="card__t"><span class="${dotCls(c.type)}" style="display:inline-block;margin-right:8px"></span>${esc(c.name)}</span>
+        ${c.id===D.cur?'<span class="badge">attivo</span>':''}</div>
+        <p class="card__s">${esc(c.ed)} · ${c.events.length} serate · ${tipoLabel(c.type).toLowerCase()}</p></button>`).join("")}
+      <div class="block"><button class="btn btn--ghost" data-act="newchamp">Crea un campionato</button>
+      <button class="btn btn--quiet" data-act="closesheet">Chiudi</button></div>`;
+  }
+
+  if(sheet.tipo === "newchamp"){
+    const t = sheet.tmp;
+    inner = `<h3>Nuovo campionato</h3>
+      <label class="fld"><span>Nome</span><input id="ch_name" value="${esc(t.name)}" placeholder="Mundialito maschile"></label>
+      <label class="fld"><span>Edizione</span><input id="ch_ed" value="${esc(t.ed)}" placeholder="3ª edizione"></label>
+      <div class="block" style="margin-top:0"><h2>Tipo</h2><div class="chips">
+        ${["maschile","femminile","misto"].map(x=>`<button class="chip" data-act="chtype" data-v="${x}" aria-pressed="${t.type===x}">${tipoLabel(x)}</button>`).join("")}
+      </div></div>
+      <div class="block"><h2>Bonus presenze</h2>
+        <div class="stepper" style="margin-bottom:10px"><button data-act="chset" data-k="soglia" data-v="-1">−</button>
+          <b>${t.soglia}</b><button data-act="chset" data-k="soglia" data-v="1">+</button><small>presenze minime</small></div>
+        <div class="stepper"><button data-act="chset" data-k="bonus" data-v="-1">−</button>
+          <b>${t.bonus}</b><button data-act="chset" data-k="bonus" data-v="1">+</button><small>punti bonus</small></div></div>
+      <div class="block"><button class="btn" data-act="savechamp">Crea</button>
+      <button class="btn btn--quiet" data-act="closesheet">Annulla</button></div>`;
+  }
+
+  if(sheet.tipo === "player"){
+    const p = P(sheet.id);
+    const righe = [];
+    D.champs.forEach(ch => {
+      const t = totals(null, ch);
+      const r = t[sheet.id]; if(!r || (!r.pts && !r.pres)) return;
+      const bonus = r.pres > ch.soglia ? ch.bonus : 0;
+      const pos = classifica(ch).filter(x => x.pres > 0).findIndex(x => x.id === sheet.id) + 1;
+      righe.push(`<tr><td>${esc(ch.name)}<br><span class="pt">${esc(ch.ed)}${pos?` · ${pos}° posto`:""}</span></td>
+        <td class="pts">${r.pts + bonus}</td><td>${r.pres}</td></tr>`);
+    });
+    const sto = ordered().filter(e => e.status === "chiuso" && e.pairs.flat().includes(sheet.id)).reverse()
+      .map(e => { const pp = eventPoints(e); const pr = e.pairs.find(x => x.includes(sheet.id));
+        const comp = pr[0] === sheet.id ? pr[1] : pr[0];
+        return `<tr><td>${esc(e.name)}<br><span class="pt">con ${esc(nm(comp))}</span></td><td class="pts">${pp[sheet.id]}</td></tr>`; });
+    const altri = D.players.filter(x => x.id !== sheet.id && x.sex === p.sex && !x.archived)
+      .sort((a,b) => a.name.localeCompare(b.name));
+    inner = `<h3>${esc(p.name)}</h3><p class="hint">${p.sex === "F" ? "Donna" : "Uomo"}</p>
+      ${righe.length?`<table class="table"><thead><tr><th>Campionato</th><th>Punti</th><th>Pres.</th></tr></thead>
+        <tbody>${righe.join("")}</tbody></table>`:`<p class="empty">Nessuna presenza registrata.</p>`}
+      ${sto.length?`<div class="block"><h2>Serate in ${esc(C().name)}</h2>
+        <table class="table"><tbody>${sto.join("")}</tbody></table></div>`:""}
+      <div class="block"><h2>Correzioni</h2>
+        <button class="btn btn--quiet" data-act="rename" data-id="${sheet.id}">Cambia nome</button>
+        <button class="btn btn--quiet" data-act="sex" data-id="${sheet.id}">Segna come ${p.sex==="F"?"uomo":"donna"}</button>
+        <button class="btn btn--quiet" data-act="archive" data-id="${sheet.id}">${p.archived?"Rimetti in lista":"Segna come ritirato"}</button>
+        <label class="fld" style="margin-top:12px"><span>È la stessa persona di…</span>
+          <select id="mergeTo"><option value="">— scegli per unire le schede —</option>
+          ${altri.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select></label>
+        <button class="btn btn--quiet" data-act="merge" data-id="${sheet.id}">Unisci le due schede</button>
+        <button class="btn btn--ghost" data-act="closesheet">Chiudi</button></div>`;
+  }
+
+  if(sheet.tipo === "locandina"){
+    inner = `<h3>Locandina</h3>
+      <p class="hint">Immagine pronta per WhatsApp, o PDF da stampare.</p>
+      <div id="locaWrap" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;
+        padding:8px;min-height:140px;display:grid;place-items:center;color:var(--ink-soft);font-size:14px">Preparo l'immagine…</div>
+      <div class="block">
+        <button class="btn" data-act="loca-png">Scarica l'immagine</button>
+        <button class="btn btn--ghost" data-act="loca-share">Condividi</button>
+        <button class="btn btn--quiet" data-act="loca-pdf">Scarica il PDF</button>
+        <button class="btn btn--quiet" data-act="closesheet">Chiudi</button>
+      </div>`;
+  }
+
+  if(sheet.tipo === "event"){
+    const ev = sheet.id ? EV(sheet.id) : null;
+    const v = ev || {name:"", date:oggi(), ora:""};
+    inner = `<h3>${ev?"Modifica serata":"Nuova serata"}</h3>
+      <label class="fld"><span>Nome</span><input id="ev_name" value="${esc(v.name)}" placeholder="8ª giornata"></label>
+      <div class="row2"><label class="fld" style="flex:2"><span>Data</span><input id="ev_date" type="date" value="${v.date}"></label>
+        <label class="fld" style="flex:1"><span>Ora</span><input id="ev_ora" value="${esc(v.ora||"")}" placeholder="11:30"></label></div>
+      <div class="block" style="margin-top:0"><h2>Valore</h2><div class="chips">
+        <button class="chip" data-act="mult" data-v="1" aria-pressed="${sheet.tmp.mult!==2}">Normale</button>
+        <button class="chip" data-act="mult" data-v="2" aria-pressed="${sheet.tmp.mult===2}">Notturna x2</button></div></div>
+      <div class="block"><h2>Campi</h2><div class="stepper">
+        <button data-act="evcampi" data-v="-1">−</button><b id="ev_campi">${sheet.tmp.campi}</b>
+        <button data-act="evcampi" data-v="1">+</button></div></div>
+      <div class="block"><button class="btn" data-act="saveev">${ev?"Salva":"Crea la serata"}</button>
+        <button class="btn btn--quiet" data-act="closesheet">Annulla</button>
+        ${ev?`<button class="btn btn--danger" data-act="delev">Elimina la serata</button>`:""}</div>`;
+  }
+
+  const d = document.createElement("div");
+  d.className = "sheet"; d.innerHTML = `<div class="sheet__in">${inner}</div>`;
+  d.addEventListener("click", e => { if(e.target === d){ sheet = null; render(); } });
+  document.body.appendChild(d);
+  if(sheet.tipo === "locandina"){
+    const w = d.querySelector("#locaWrap");
+    drawLocandina(EV(sheet.id)).then(cv => {
+      LOCA = cv; cv.style.width = "100%"; cv.style.height = "auto"; cv.style.display = "block";
+      w.innerHTML = ""; w.appendChild(cv);
+    }).catch(() => { w.textContent = "Non riesco a disegnarla."; });
+  }
+}
+
+/* ============================ AZIONI ============================ */
+tabsEl.addEventListener("click", e => {
+  const b = e.target.closest("button[data-tab]"); if(!b) return;
+  tab = b.dataset.tab; openEvent = null; sheet = null; search = ""; render();
+});
+
+document.addEventListener("submit", e => {
+  const f = e.target.closest("form[data-act]"); if(!f) return;
+  e.preventDefault();
+  const misto = C().type === "misto";
+  if(f.dataset.act === "addp"){
+    const i = document.getElementById("newp"), v = i.value.trim(); if(!v) return;
+    const sx = misto ? document.getElementById("newsex").value : (C().type === "femminile" ? "F" : "M");
+    const id = uid(); D.players.push({id, name:v, sex:sx});
+    const ev = EV(openEvent); ev.presenti = ev.presenti || []; ev.presenti.push(id);
+    save(); render(); toast(v + " aggiunto e segnato presente");
+  }
+  if(f.dataset.act === "addp2"){
+    const i = document.getElementById("newp2"), v = i.value.trim(); if(!v) return;
+    const sx = misto ? document.getElementById("newsex2").value : (C().type === "femminile" ? "F" : "M");
+    D.players.push({id:uid(), name:v, sex:sx}); save(); render(); toast(v + " aggiunto");
+  }
+});
+
+document.addEventListener("input", e => {
+  if(e.target.matches('[data-act="search"]')){
+    search = e.target.value; const pos = e.target.selectionStart; render();
+    const n = document.getElementById("q"); if(n){ n.focus(); n.setSelectionRange(pos,pos); }
+  }
+  if(e.target.matches('[data-act="cname"]')){ C().name = e.target.value; save(); }
+  if(e.target.matches('[data-act="ced"]')){ C().ed = e.target.value; save(); }
+  if(e.target.matches('[data-act="firma"]')){ D.settings.firma = e.target.value; save(); }
+  if(e.target.matches('[data-act="logo"]')) setLogo(e.target.files[0]);
+  if(e.target.matches('[data-act="import"]')) doImport(e.target.files[0]);
+});
+
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if(!el) return;
+  const a = el.dataset.act, ev = EV(openEvent), c = C();
+
+  if(a === "home"){ openEvent = null; render(); return; }
+  if(a === "closesheet"){ sheet = null; render(); return; }
+
+  /* campionati */
+  if(a === "champs"){ sheet = {tipo:"champs"}; render(); return; }
+  if(a === "setchamp"){ D.cur = el.dataset.id; sheet = null; openEvent = null; tab = "serate"; search = ""; save(); render(); return; }
+  if(a === "newchamp"){ sheet = {tipo:"newchamp", tmp:{name:"", ed:"", type:"maschile", soglia:8, bonus:5}}; render(); return; }
+  if(a === "chtype"){ sheet.tmp.type = el.dataset.v; render(); return; }
+  if(a === "chset"){
+    const k = el.dataset.k, lim = k === "soglia" ? [0,30] : [0,50];
+    sheet.tmp[k] = Math.max(lim[0], Math.min(lim[1], sheet.tmp[k] + (+el.dataset.v))); render(); return;
+  }
+  if(a === "savechamp"){
+    const name = (document.getElementById("ch_name").value || "").trim() || "Mundialito " + tipoLabel(sheet.tmp.type).toLowerCase();
+    const ed = (document.getElementById("ch_ed").value || "").trim() || "1ª edizione";
+    const id = uid();
+    D.champs.push({id, name, ed, type:sheet.tmp.type, soglia:sheet.tmp.soglia, bonus:sheet.tmp.bonus, carry:{}, events:[]});
+    D.cur = id; sheet = null; tab = "serate"; save(); render(); toast("Campionato creato"); return;
+  }
+
+  /* serate */
+  if(a === "newev"){ sheet = {tipo:"event", id:null, tmp:{mult:1, campi:D.settings.campi}}; render(); return; }
+  if(a === "editev"){ sheet = {tipo:"event", id:openEvent, tmp:{mult:ev.mult, campi:ev.campi}}; render(); return; }
+  if(a === "openev"){ openEvent = el.dataset.id; const x = EV(openEvent);
+    step = x.matches && x.matches.length ? "tabellone" : (x.pairs.length ? "coppie" : "presenti");
+    sel = []; search = ""; render(); return; }
+  if(a === "mult"){ sheet.tmp.mult = +el.dataset.v; render(); return; }
+  if(a === "evcampi"){ sheet.tmp.campi = Math.max(1, Math.min(12, sheet.tmp.campi + (+el.dataset.v)));
+    document.getElementById("ev_campi").textContent = sheet.tmp.campi; return; }
+  if(a === "saveev"){
+    const name = (document.getElementById("ev_name").value || "").trim() || "Serata del " + dataIt(oggi());
+    const date = document.getElementById("ev_date").value || oggi();
+    const ora = (document.getElementById("ev_ora").value || "").trim();
+    if(sheet.id) Object.assign(EV(sheet.id), {name, date, ora, mult:sheet.tmp.mult, campi:sheet.tmp.campi});
+    else{
+      const id = uid();
+      c.events.push({id, created:Date.now(), name, date, ora, mult:sheet.tmp.mult, campi:sheet.tmp.campi,
+        status:"bozza", presenti:[], pairs:[], matches:[], seeds:{}});
+      openEvent = id; step = "presenti"; sel = [];
+    }
+    sheet = null; save(); render(); return;
+  }
+  if(a === "delev"){
+    const id = (sheet && sheet.id) ? sheet.id : openEvent;
+    if(confirm("Elimino questa serata e i suoi punti?")){
+      c.events = c.events.filter(x => x.id !== id); sheet = null; openEvent = null; save(); render();
+    } return;
+  }
+
+  /* wizard */
+  if(a === "step"){ step = el.dataset.v; sel = []; search = ""; render(); return; }
+  if(a === "togglep"){
+    const id = el.dataset.id; ev.presenti = ev.presenti || [];
+    if(ev.presenti.includes(id)){
+      ev.presenti = ev.presenti.filter(x => x !== id);
+      ev.pairs = ev.pairs.filter(pr => !pr.includes(id));
+    } else ev.presenti.push(id);
+    save(); render(); return;
+  }
+  if(a === "pick"){
+    const id = el.dataset.id;
+    if(sel.includes(id)) sel = sel.filter(x => x !== id); else sel.push(id);
+    if(sel.length === 2){
+      if(c.type === "misto" && P(sel[0]).sex === P(sel[1]).sex){
+        sel = []; render(); toast("Nel misto la coppia è una donna e un uomo"); return;
+      }
+      const pr = c.type === "misto" && P(sel[0]).sex === "M" ? [sel[1], sel[0]] : [sel[0], sel[1]];
+      ev.pairs.push(pr); sel = []; save();
+    }
+    render(); return;
+  }
+  if(a === "unpair"){ ev.pairs.splice(+el.dataset.i, 1); save(); render(); return; }
+  if(a === "auto"){
+    autoPairs(ev, el.dataset.m); save(); render();
+    const fuori = (ev.presenti||[]).length - ev.pairs.length*2;
+    if(fuori > 0) toast(fuori === 1 ? "Uno resta senza coppia" : fuori + " restano senza coppia");
+    return;
+  }
+  if(a === "board"){ buildBoard(ev); step = "tabellone"; save(); render(); return; }
+  if(a === "win"){ const m = ev.matches[+el.dataset.i];
+    m.winner = (m.winner === el.dataset.s) ? null : el.dataset.s; save(); render(); return; }
+  if(a === "close"){ ev.status = "chiuso"; save(); render(); toast("Punti assegnati"); return; }
+  if(a === "reopen"){ ev.status = "bozza"; step = "tabellone"; save(); render(); return; }
+
+  /* giocatori */
+  if(a === "player"){ sheet = {tipo:"player", id:el.dataset.id}; render(); return; }
+  if(a === "rename"){ const p = P(el.dataset.id), v = prompt("Nome", p.name);
+    if(v && v.trim()){ p.name = v.trim(); save(); render(); } return; }
+  if(a === "sex"){ const p = P(el.dataset.id); p.sex = p.sex === "F" ? "M" : "F"; save(); render(); return; }
+  if(a === "archive"){ const p = P(el.dataset.id); p.archived = !p.archived; save(); render(); return; }
+  if(a === "merge"){
+    const to = document.getElementById("mergeTo").value, from = el.dataset.id;
+    if(!to){ toast("Scegli prima con chi unirla"); return; }
+    if(!confirm(`Unisco ${P(from).name} dentro ${P(to).name}? Punti e presenze si sommano.`)) return;
+    mergePlayers(from, to); sheet = {tipo:"player", id:to}; save(); render(); toast("Schede unite"); return;
+  }
+
+  /* impostazioni */
+  if(a === "cset"){ const k = el.dataset.k, lim = k === "soglia" ? [0,30] : [0,50];
+    c[k] = Math.max(lim[0], Math.min(lim[1], c[k] + (+el.dataset.v))); save(); render(); return; }
+  if(a === "set"){ D.settings.campi = Math.max(1, Math.min(12, D.settings.campi + (+el.dataset.v))); save(); render(); return; }
+  if(a === "export"){ doExport(); return; }
+  if(a === "wipe"){ if(confirm("Cancello tutto da questo browser?")){
+      try{ localStorage.removeItem(KEY); }catch(e){}
+      D = fresh(); openEvent = null; sheet = null; save(); render(); } return; }
+  if(a === "loca"){ LOCA = null; sheet = {tipo:"locandina", id:openEvent}; render(); return; }
+  if(a === "loca-png"){ locaSave("png"); return; }
+  if(a === "loca-pdf"){ locaSave("pdf"); return; }
+  if(a === "loca-share"){ locaShare(); return; }
+  if(a === "dellogo"){ D.settings.logo = null; save(); render(); return; }
+  if(a === "shareclass"){ copia(testoClassifica()); return; }
+  if(a === "shareev"){ copia(testoEvento(ev)); return; }
+});
+
+function mergePlayers(from, to){
+  D.champs.forEach(ch => {
+    const f = ch.carry[from];
+    if(f){ const t = ch.carry[to] || {pts:0, pres:0};
+      ch.carry[to] = {pts:(t.pts||0)+(f.pts||0), pres:(t.pres||0)+(f.pres||0)}; delete ch.carry[from]; }
+    ch.events.forEach(ev => {
+      ev.presenti = (ev.presenti||[]).map(x => x === from ? to : x).filter((x,i,arr) => arr.indexOf(x) === i);
+      ev.pairs = (ev.pairs||[]).map(pr => pr.map(x => x === from ? to : x));
+    });
+  });
+  D.players = D.players.filter(p => p.id !== from);
+}
+
+
+/* ---------- locandina ---------- */
+let LOCA = null;
+const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
+const MESI = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+
+function rrect(x,a,b,w,h,r){
+  x.beginPath();
+  x.moveTo(a+r,b); x.arcTo(a+w,b,a+w,b+h,r); x.arcTo(a+w,b+h,a,b+h,r);
+  x.arcTo(a,b+h,a,b,r); x.arcTo(a,b,a+w,b,r); x.closePath();
+}
+function fitFont(x, txt, maxW, weight, size, min){
+  let s = size;
+  while(s > (min||16)){ x.font = weight + " " + s + "px Archivo, Arial"; if(x.measureText(txt).width <= maxW) break; s -= 2; }
+  x.font = weight + " " + s + "px Archivo, Arial";
+  return s;
+}
+function pallina(x, cx, cy, r, fill, txt, col, size){
+  x.beginPath(); x.arc(cx, cy, r, 0, Math.PI*2); x.fillStyle = fill; x.fill();
+  x.fillStyle = col; x.textAlign = "center"; x.textBaseline = "middle";
+  fitFont(x, txt, r*1.7, "700", size, 14);
+  x.fillText(txt, cx, cy+1);
+}
+function dataLunga(ev){
+  if(!ev.date) return "";
+  const d = new Date(ev.date + "T12:00:00");
+  let s = GIORNI[d.getDay()] + " " + d.getDate() + " " + MESI[d.getMonth()];
+  if(ev.ora) s += " ore " + ev.ora;
+  return s;
+}
+function loadImg(src){
+  return new Promise((ok,no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
+}
+
+async function drawLocandina(ev){
+  const ch = C(), t = totals(ev.id);
+  const W = 1080, n = ev.matches.length;
+  let logo = null;
+  if(D.settings.logo){ try{ logo = await loadImg(D.settings.logo); }catch(e){} }
+  const HEAD = 300, ROW = 196, FOOT = D.settings.firma ? 120 : 70;
+  const H = HEAD + n*ROW + FOOT;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const x = cv.getContext("2d");
+  try{
+    await Promise.all(["800 60px Archivo","700 40px Archivo","600 30px Archivo","500 30px Archivo"]
+      .map(f => document.fonts.load(f)));
+    await document.fonts.ready;
+  }catch(e){}
+
+  const g = x.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,"#F4F4F2"); g.addColorStop(1,"#D8DAD8");
+  x.fillStyle = g; x.fillRect(0,0,W,H);
+
+  const L = 40, R = W - 40;
+  if(logo){
+    const s = 186, ar = logo.width / logo.height;
+    const w = ar >= 1 ? s : s*ar, h = ar >= 1 ? s/ar : s;
+    x.drawImage(logo, L, 34, w, h);
+  }
+  const left = logo ? L + 210 : L;
+
+  x.textAlign = "right"; x.textBaseline = "alphabetic"; x.fillStyle = "#16365C";
+  const titolo = (ch.name + " " + ((ch.ed||"").match(/\d+/)||[""])[0]).trim().toUpperCase();
+  fitFont(x, titolo, R - left, "800", 62, 24);
+  x.fillText(titolo, R, 96);
+
+  x.fillStyle = "#2F5F8E";
+  fitFont(x, "INGRESSO IN CAMPO", R - left, "700", 42, 20);
+  x.fillText("INGRESSO IN CAMPO", R, 152);
+  const sub = "(" + (ev.name || "").toUpperCase() + ")";
+  fitFont(x, sub, R - left, "700", 42, 20);
+  x.fillText(sub, R, 202);
+
+  const dl = dataLunga(ev);
+  if(dl){ x.fillStyle = "#39434A"; fitFont(x, dl, R - left, "400", 30, 16); x.fillText(dl, R, 250); }
+
+  for(let i=0; i<n; i++){
+    const m = ev.matches[i], top = HEAD + i*ROW;
+    x.fillStyle = "#C7B079"; rrect(x, 130, top, 820, 40, 5); x.fill();
+    x.fillStyle = "#2B2B2B"; x.textAlign = "center"; x.textBaseline = "middle";
+    fitFont(x, campoLabel(ev,i).replace(/ · .*/,""), 760, "600", 31, 18);
+    x.fillText(campoLabel(ev,i).replace("CAMPO","CAMPO"), 540, top+21);
+
+    const cy1 = top + 104, cy2 = top + 160, cym = (cy1+cy2)/2;
+    const A = ev.pairs[m.pa], B = (m.pb === null || m.pb === undefined) ? null : ev.pairs[m.pb];
+    const won = s => m.winner === s;
+
+    const lato = (ids, dir, win) => {
+      const cxC = dir < 0 ? 58 : W - 58;
+      const nx  = dir < 0 ? 104 : W - 104;
+      const u1  = dir < 0 ? 98 : 640, u2 = dir < 0 ? 440 : W - 98;
+      x.textAlign = dir < 0 ? "left" : "right";
+      ids.forEach((id, k) => {
+        const cy = k ? cy2 : cy1;
+        pallina(x, cxC, cy, 28, "#A98A4F", String(t[id] ? t[id].pts : 0), "#FFFFFF", 28);
+        x.fillStyle = "#15191C"; x.textBaseline = "middle";
+        x.textAlign = dir < 0 ? "left" : "right";
+        fitFont(x, nm(id), 334, win ? "700" : "500", 31, 17);
+        x.fillText(nm(id), nx, cy);
+      });
+      x.strokeStyle = "#13171A"; x.lineWidth = 5; x.lineCap = "round";
+      x.beginPath(); x.moveTo(u1, cym); x.lineTo(u2, cym); x.stroke();
+    };
+
+    lato(A, -1, won("a"));
+    if(B) lato(B, 1, won("b"));
+    else {
+      x.fillStyle = "#7A8488"; x.textAlign = "right"; x.textBaseline = "middle";
+      fitFont(x, "riposo", 300, "500", 31, 18);
+      x.fillText("riposo", W - 104, cym);
+    }
+
+    pallina(x, 492, cym, 42, "#F6E7C6", String(ev.seeds ? ev.seeds[m.pa] : 0), "#2B2B2B", 34);
+    if(B) pallina(x, 592, cym, 42, "#F7C98C", String(ev.seeds ? ev.seeds[m.pb] : 0), "#2B2B2B", 34);
+  }
+
+  if(D.settings.firma){
+    x.fillStyle = "#4C5559"; x.textAlign = "center"; x.textBaseline = "middle";
+    fitFont(x, D.settings.firma, W - 120, "700", 36, 18);
+    x.fillText(D.settings.firma, W/2, H - 62);
+  }
+  return cv;
+}
+
+function locaNome(ev, ext){
+  return (C().name + " " + ev.name).normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^\w\s-]/g,"").trim().replace(/\s+/g,"-").toLowerCase() + "." + ext;
+}
+async function offriFile(filename, blob){
+  try{
+    if(typeof claude !== "undefined" && claude.use){
+      const dl = await claude.use("downloads");
+      if(dl){ await dl.save({filename, data:blob}); toast("Salvato"); return; }
+    }
+  }catch(e){ if(e && e.code === "declined") return; }
+  try{
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = u; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 5000);
+    toast("Scaricato");
+  }catch(e){
+    try{ window.open(URL.createObjectURL(blob), "_blank"); toast("Aperto in una nuova scheda"); }
+    catch(e2){ toast("Download non disponibile qui"); }
+  }
+}
+async function locaSave(fmt){
+  if(!LOCA || !sheet){ toast("Immagine non pronta"); return; }
+  const ev = EV(sheet.id);
+  if(fmt === "png"){
+    const blob = await new Promise(r => LOCA.toBlob(r, "image/png"));
+    await offriFile(locaNome(ev,"png"), blob);
+  } else {
+    const J = window.jspdf && window.jspdf.jsPDF;
+    if(!J){ toast("PDF non disponibile, scarica l'immagine"); return; }
+    const doc = new J({orientation:"p", unit:"px", format:[LOCA.width, LOCA.height], compress:true});
+    doc.addImage(LOCA.toDataURL("image/png"), "PNG", 0, 0, LOCA.width, LOCA.height);
+    await offriFile(locaNome(ev,"pdf"), doc.output("blob"));
+  }
+}
+async function locaShare(){
+  if(!LOCA || !sheet) return;
+  const ev = EV(sheet.id);
+  const blob = await new Promise(r => LOCA.toBlob(r, "image/png"));
+  const f = new File([blob], locaNome(ev,"png"), {type:"image/png"});
+  if(navigator.canShare && navigator.canShare({files:[f]})){
+    try{ await navigator.share({files:[f], title:ev.name}); return; }
+    catch(e){ if(e && e.name === "AbortError") return; }
+  }
+  toast("Condivisione non disponibile: scarica l'immagine");
+}
+function setLogo(file){
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    const i = new Image();
+    i.onload = () => {
+      const s = 320, ar = i.width / i.height;
+      const cv = document.createElement("canvas");
+      cv.width = ar >= 1 ? s : Math.round(s*ar);
+      cv.height = ar >= 1 ? Math.round(s/ar) : s;
+      cv.getContext("2d").drawImage(i, 0, 0, cv.width, cv.height);
+      D.settings.logo = cv.toDataURL("image/png");
+      save(); render(); toast("Logo caricato");
+    };
+    i.onerror = () => toast("Immagine non valida");
+    i.src = r.result;
+  };
+  r.readAsDataURL(file);
+}
+
+/* ---------- testo e backup ---------- */
+function testoClassifica(){
+  const c = C(), l = classifica().filter(r => r.pres > 0);
+  return [c.name + " — " + c.ed, "Classifica generale", ""]
+    .concat(l.map((r,i) => `${i+1}. ${r.name} — ${r.tot} pt (${r.pres} pres.)`)).join("\n");
+}
+function testoEvento(ev){
+  const pts = eventPoints(ev);
+  return [C().name, ev.name + (ev.mult===2?" (x2)":"") + " · " + dataIt(ev.date), ""]
+    .concat(placements(ev).map((pi,k) => {
+      const pr = ev.pairs[pi];
+      return `${k+1}. ${nm(pr[0])} e ${nm(pr[1])} — ${pts[pr[0]]||0} pt`;
+    })).join("\n");
+}
+function copia(txt){
+  if(navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(txt).then(()=>toast("Copiato")).catch(()=>fallback(txt));
+  else fallback(txt);
+}
+function fallback(txt){
+  const ta = document.createElement("textarea");
+  ta.value = txt; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); toast("Copiato"); }catch(e){ toast("Copia non riuscita"); }
+  ta.remove();
+}
+async function doExport(){
+  const blob = new Blob([JSON.stringify(D, null, 1)], {type:"application/json"});
+  await offriFile("mundialito-" + oggi() + ".json", blob);
+}
+function doImport(file){
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const d = JSON.parse(r.result);
+      if(!d || !d.players || !d.champs) throw 0;
+      if(!confirm("Sostituisco i dati di questo browser con il backup?")) return;
+      D = d; D.settings = D.settings || {campi:5}; D.cur = D.cur || D.champs[0].id;
+      openEvent = null; sheet = null; save(); render(); toast("Backup caricato");
+    }catch(e){ toast("File non valido"); }
+  };
+  r.readAsText(file);
+}
+
+D = load() || fresh();
+save();
+render();
+</script>
+</body>
+</html>
