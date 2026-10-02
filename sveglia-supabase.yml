@@ -1,0 +1,23 @@
+# Tiene sveglio il progetto Supabase: sul piano gratuito si mette in pausa
+# dopo 7 giorni senza traffico. Va in .github/workflows/sveglia-supabase.yml
+name: sveglia-supabase
+
+on:
+  schedule:
+    - cron: "0 7 */2 * *"   # ogni due giorni alle 7:00 UTC
+  workflow_dispatch:         # e a mano, dal tab Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Una chiamata al database
+        run: |
+          codice=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${{ secrets.SUPABASE_KEY }}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/settings?select=id&limit=1")
+          echo "Risposta: $codice"
+          if [ "$codice" != "200" ]; then
+            echo "Il database non ha risposto come previsto"
+            exit 1
+          fi
