@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --field:#E7EDEC; --paper:#FFFFFF; --court:#0C4A5A; --court-soft:#13697F;
@@ -204,7 +205,15 @@ const dotCls = t => t === "femminile" ? "dot dot--f" : t === "misto" ? "dot dot-
 const eligible = p => { const t = C().type;
   return !p.archived && (t === "misto" || (t === "maschile" ? p.sex === "M" : p.sex === "F")); };
 
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(D)); }catch(e){ toast("Memoria piena: esporta un backup"); } }
+let tPush;
+function salvaLocale(){
+  try{ localStorage.setItem(KEY, JSON.stringify(D)); }catch(e){ toast("Memoria piena: esporta un backup"); }
+}
+function save(){
+  D.rev = (D.rev || 0) + 1;
+  salvaLocale();
+  clearTimeout(tPush); tPush = setTimeout(() => { try{ pushDiff(); }catch(e){} }, 600);
+}
 function load(){ try{ const r = localStorage.getItem(KEY); if(r){ const d = JSON.parse(r); if(d && d.champs) return d; } }catch(e){} return null; }
 function fresh(){
   const d = {v:2, settings:{campi:5}, players:[], champs:[], cur:null};
@@ -334,7 +343,8 @@ function renderSerate(){
       <h1 class="top__title">Serate</h1>
       <p class="top__meta">${c.events.length} in archivio · ${tipoLabel(c.type).toLowerCase()}</p>
     </div></div></header>
-  <button class="btn" data-act="newev">Nuova serata</button>
+  ${canWrite() ? `<button class="btn" data-act="newev">Nuova serata</button>`
+    : `<p class="empty">Stai guardando in sola lettura. Per gestire le serate entra da Altro → Accedi come gestore.</p>`}
   <div class="block">
   ${list.length ? list.map(e => `
     <button class="card card--tap" data-act="openev" data-id="${e.id}">
@@ -525,6 +535,13 @@ function renderAltro(){
   <div class="block"><h2>Campi del circolo</h2>
     <div class="stepper"><button data-act="set" data-k="campi" data-v="-1">−</button><b>${D.settings.campi}</b>
       <button data-act="set" data-k="campi" data-v="1">+</button><small>valore di partenza</small></div></div>
+  <div class="block"><h2>Database</h2>
+    <p class="hint">${testoSync()}</p>
+    ${canWrite()
+      ? `<button class="btn btn--quiet" data-act="logout">Esci dalla modalità gestore</button>`
+      : `<button class="btn" data-act="login">Accedi come gestore</button>`}
+    <button class="btn btn--quiet" data-act="sync">Sincronizza adesso</button>
+  </div>
   <div class="block"><h2>Locandina</h2>
     <p class="hint">Logo e scritta usati nell'immagine della serata.</p>
     <label class="btn btn--quiet" style="cursor:pointer">${D.settings.logo?"Cambia il logo":"Carica il logo"}
@@ -610,6 +627,17 @@ function renderSheet(){
         <button class="btn btn--ghost" data-act="closesheet">Chiudi</button></div>`;
   }
 
+  if(sheet.tipo === "login"){
+    inner = `<h3>Accesso gestore</h3>
+      <p class="hint">Serve solo a chi gestisce le serate. Si fa una volta sola: la sessione resta su questo dispositivo.</p>
+      <form data-act="dologin">
+        <label class="fld"><span>Mail</span><input id="lg_mail" type="email" autocomplete="username" inputmode="email"></label>
+        <label class="fld"><span>Password</span><input id="lg_pwd" type="password" autocomplete="current-password"></label>
+        <button class="btn" type="submit">Entra</button>
+      </form>
+      <div class="block"><button class="btn btn--quiet" data-act="closesheet">Annulla</button></div>`;
+  }
+
   if(sheet.tipo === "locandina"){
     inner = `<h3>Locandina</h3>
       <p class="hint">Immagine pronta per WhatsApp, o PDF da stampare.</p>
@@ -645,6 +673,17 @@ function renderSheet(){
   d.className = "sheet"; d.innerHTML = `<div class="sheet__in">${inner}</div>`;
   d.addEventListener("click", e => { if(e.target === d){ sheet = null; render(); } });
   document.body.appendChild(d);
+  if(sheet.tipo === "login"){
+    inner = `<h3>Accesso gestore</h3>
+      <p class="hint">Serve solo a chi gestisce le serate. Si fa una volta sola: la sessione resta su questo dispositivo.</p>
+      <form data-act="dologin">
+        <label class="fld"><span>Mail</span><input id="lg_mail" type="email" autocomplete="username" inputmode="email"></label>
+        <label class="fld"><span>Password</span><input id="lg_pwd" type="password" autocomplete="current-password"></label>
+        <button class="btn" type="submit">Entra</button>
+      </form>
+      <div class="block"><button class="btn btn--quiet" data-act="closesheet">Annulla</button></div>`;
+  }
+
   if(sheet.tipo === "locandina"){
     const w = d.querySelector("#locaWrap");
     drawLocandina(EV(sheet.id)).then(cv => {
@@ -663,6 +702,11 @@ tabsEl.addEventListener("click", e => {
 document.addEventListener("submit", e => {
   const f = e.target.closest("form[data-act]"); if(!f) return;
   e.preventDefault();
+  if(f.dataset.act === "dologin"){
+    login(document.getElementById("lg_mail").value.trim(), document.getElementById("lg_pwd").value);
+    return;
+  }
+  if(!canWrite()){ toast("Serve l'accesso da gestore per modificare"); return; }
   const misto = C().type === "misto";
   if(f.dataset.act === "addp"){
     const i = document.getElementById("newp"), v = i.value.trim(); if(!v) return;
@@ -683,9 +727,9 @@ document.addEventListener("input", e => {
     search = e.target.value; const pos = e.target.selectionStart; render();
     const n = document.getElementById("q"); if(n){ n.focus(); n.setSelectionRange(pos,pos); }
   }
-  if(e.target.matches('[data-act="cname"]')){ C().name = e.target.value; save(); }
-  if(e.target.matches('[data-act="ced"]')){ C().ed = e.target.value; save(); }
-  if(e.target.matches('[data-act="firma"]')){ D.settings.firma = e.target.value; save(); }
+  if(e.target.matches('[data-act="cname"]') && canWrite()){ C().name = e.target.value; save(); }
+  if(e.target.matches('[data-act="ced"]') && canWrite()){ C().ed = e.target.value; save(); }
+  if(e.target.matches('[data-act="firma"]') && canWrite()){ D.settings.firma = e.target.value; save(); }
   if(e.target.matches('[data-act="logo"]')) setLogo(e.target.files[0]);
   if(e.target.matches('[data-act="import"]')) doImport(e.target.files[0]);
 });
@@ -693,6 +737,9 @@ document.addEventListener("input", e => {
 document.addEventListener("click", e => {
   const el = e.target.closest("[data-act]"); if(!el) return;
   const a = el.dataset.act, ev = EV(openEvent), c = C();
+  if(!canWrite() && !AZIONI_LETTURA.has(a)){
+    toast("Serve l'accesso da gestore per modificare"); return;
+  }
 
   if(a === "home"){ openEvent = null; render(); return; }
   if(a === "closesheet"){ sheet = null; render(); return; }
@@ -799,6 +846,9 @@ document.addEventListener("click", e => {
   if(a === "wipe"){ if(confirm("Cancello tutto da questo browser?")){
       try{ localStorage.removeItem(KEY); }catch(e){}
       D = fresh(); openEvent = null; sheet = null; save(); render(); } return; }
+  if(a === "login"){ sheet = {tipo:"login"}; render(); return; }
+  if(a === "logout"){ if(confirm("Esco dalla modalità gestore su questo dispositivo?")) logout(); return; }
+  if(a === "sync"){ syncNow(false); return; }
   if(a === "loca"){ LOCA = null; sheet = {tipo:"locandina", id:openEvent}; render(); return; }
   if(a === "loca-png"){ locaSave("png"); return; }
   if(a === "loca-pdf"){ locaSave("pdf"); return; }
@@ -821,6 +871,191 @@ function mergePlayers(from, to){
   D.players = D.players.filter(p => p.id !== from);
 }
 
+
+
+/* ---------- sincronizzazione Supabase ---------- */
+const SB_URL = "https://fmjraciijqjelnthxwhq.supabase.co";
+const SB_KEY = "sb_publishable_WP0-Q7i10-F2RTJgCCwAiw_tcEdHHox";
+const QKEY = KEY + ".coda", GKEY = KEY + ".gestore", RKEY = KEY + ".rev";
+
+let SB = null, SESSION = null, QUEUE = [], SNAP = null, flushing = false;
+let SYNC = {stato:"avvio", msg:""};
+
+const ls = (k,v) => { try{ return v === undefined ? localStorage.getItem(k) : (v === null ? localStorage.removeItem(k) : localStorage.setItem(k,v)); }catch(e){ return null; } };
+const canWrite = () => !!SESSION || ls(GKEY) === "1";   // permesso nell'interfaccia
+const canSync  = () => !!SB && !!SESSION;               // permesso di scrivere sul database
+const dirty    = () => String(D.rev || 0) !== String(ls(RKEY));
+const setSynced = () => ls(RKEY, String(D.rev || 0));
+function setSync(stato, msg){ SYNC = {stato, msg:msg || "", at:Date.now()}; }
+
+function qLoad(){ try{ QUEUE = JSON.parse(ls(QKEY) || "[]"); }catch(e){ QUEUE = []; } }
+function qSave(){ ls(QKEY, JSON.stringify(QUEUE)); }
+
+/* --- conversione stato <-> righe --- */
+function rowsOf(st){
+  const out = {players:[], champs:[], events:[], settings:[]};
+  st.players.forEach(p => out.players.push({id:p.id, name:p.name, sex:p.sex || "M", archived:!!p.archived}));
+  st.champs.forEach((c,i) => out.champs.push({id:c.id, name:c.name, ed:c.ed || "", type:c.type,
+    soglia:c.soglia, bonus:c.bonus, carry:c.carry || {}, ordine:i}));
+  st.champs.forEach(c => (c.events || []).forEach(e => out.events.push({
+    id:e.id, champ_id:c.id, name:e.name, data:e.date || null, ora:e.ora || null,
+    mult:e.mult || 1, campi:e.campi || 5, status:e.status || "bozza",
+    presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [],
+    seeds:e.seeds || {}, created:e.created || 0})));
+  out.settings.push({id:1, data:st.settings || {}});
+  return out;
+}
+function stateFromRows(r){
+  const d = {v:2, rev:(D && D.rev) || 0, settings:(r.settings[0] && r.settings[0].data) || {campi:5},
+    players:[], champs:[], cur:null};
+  d.players = r.players.map(p => ({id:p.id, name:p.name, sex:p.sex || "M", archived:!!p.archived}));
+  d.champs = [...r.champs].sort((a,b) => (a.ordine || 0) - (b.ordine || 0)).map(c => ({
+    id:c.id, name:c.name, ed:c.ed || "", type:c.type, soglia:c.soglia, bonus:c.bonus,
+    carry:c.carry || {}, events:[]}));
+  const idx = {}; d.champs.forEach(c => idx[c.id] = c);
+  r.events.forEach(e => {
+    const c = idx[e.champ_id]; if(!c) return;
+    c.events.push({id:e.id, created:Number(e.created) || 0, name:e.name, date:e.data || "",
+      ora:e.ora || "", mult:e.mult || 1, campi:e.campi || 5, status:e.status || "bozza",
+      presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [], seeds:e.seeds || {}});
+  });
+  d.cur = d.champs.length ? d.champs[0].id : null;
+  return d;
+}
+function snapOf(rows){
+  const s = {};
+  for(const t in rows){ s[t] = {}; rows[t].forEach(r => s[t][String(r.id)] = JSON.stringify(r)); }
+  return s;
+}
+
+/* --- accoda le differenze; funziona anche senza rete --- */
+function pushDiff(){
+  if(!canWrite()) return;
+  const now = snapOf(rowsOf(D));
+  const prev = SNAP || {players:{}, champs:{}, events:{}, settings:{}};
+  for(const t in now){
+    const p = prev[t] || {};
+    for(const id in now[t]) if(p[id] !== now[t][id]) QUEUE.push({op:"up", t, row:JSON.parse(now[t][id])});
+    for(const id in p) if(!(id in now[t])) QUEUE.push({op:"del", t, id});
+  }
+  SNAP = now; compatta(); qSave(); flush();
+}
+function compatta(){
+  const m = new Map();
+  QUEUE.forEach(o => m.set(o.t + "|" + (o.op === "del" ? o.id : o.row.id), o));
+  QUEUE = [...m.values()];
+}
+async function flush(){
+  if(flushing || !canSync() || !QUEUE.length) return;
+  flushing = true; compatta(); qSave();
+  const rev = D.rev || 0;
+  try{
+    while(QUEUE.length){
+      const o = QUEUE[0];
+      const res = o.op === "up"
+        ? await SB.from(o.t).upsert(o.row)
+        : await SB.from(o.t).delete().eq("id", o.id);
+      if(res.error) throw res.error;
+      QUEUE.shift(); qSave();
+    }
+    ls(RKEY, String(rev));
+    setSync("ok");
+  }catch(e){
+    setSync("errore", (e && e.message) || "rete non raggiungibile");
+  }
+  flushing = false;
+  if(!openEvent && !sheet && tab === "altro") render();
+}
+async function pull(){
+  const [p,c,e,s] = await Promise.all([
+    SB.from("players").select("*"), SB.from("champs").select("*"),
+    SB.from("events").select("*"), SB.from("settings").select("*")]);
+  const err = p.error || c.error || e.error || s.error;
+  if(err) throw err;
+  return {players:p.data || [], champs:c.data || [], events:e.data || [], settings:s.data || []};
+}
+
+async function syncNow(silenzioso){
+  if(!SB){ setSync("locale"); if(!silenzioso) toast("Database non raggiungibile"); render(); return; }
+  try{
+    setSync("corso"); if(!silenzioso) render();
+    if(QUEUE.length && canSync()) await flush();
+    const r = await pull();
+    const remoto = stateFromRows(r);
+    const vuoto = !r.champs.length && !r.players.length;
+
+    if(canSync() && (vuoto || dirty() || QUEUE.length)){
+      // il dispositivo del gestore ha la versione buona: allineo il database
+      SNAP = snapOf(rowsOf(remoto));
+      pushDiff();
+      await flush();
+      if(!silenzioso) toast(vuoto ? "Dati caricati sul database" : "Database allineato");
+    } else if(!vuoto){
+      const prima = D.cur;
+      D = remoto;
+      if(prima && D.champs.some(c => c.id === prima)) D.cur = prima;
+      SNAP = snapOf(rowsOf(D));
+      salvaLocale(); setSynced();
+      if(!silenzioso) toast("Dati aggiornati");
+    }
+    if(SYNC.stato !== "errore") setSync("ok");
+  }catch(e){
+    setSync("errore", (e && e.message) || "rete non raggiungibile");
+    if(!silenzioso) toast("Sincronizzazione fallita");
+  }
+  if(openEvent && !EV(openEvent)) openEvent = null;
+  render();
+}
+
+async function initSync(){
+  qLoad();
+  if(!window.supabase || !window.supabase.createClient){
+    setSync("locale", "libreria non caricata"); render(); return;
+  }
+  try{
+    SB = window.supabase.createClient(SB_URL, SB_KEY);
+    const {data} = await SB.auth.getSession();
+    SESSION = (data && data.session) || null;
+    if(SESSION) ls(GKEY, "1");
+    SB.auth.onAuthStateChange((ev, s) => {
+      SESSION = s || null;
+      if(SESSION){ ls(GKEY, "1"); flush(); }
+      render();
+    });
+    await syncNow(true);
+  }catch(e){
+    setSync("errore", (e && e.message) || "connessione fallita"); render();
+  }
+  window.addEventListener("online", () => { if(canSync()) syncNow(true); });
+}
+async function login(mail, pwd){
+  if(!SB){ toast("Database non raggiungibile: riprova quando hai rete"); return; }
+  const {error} = await SB.auth.signInWithPassword({email:mail, password:pwd});
+  if(error){
+    toast(/Invalid login/i.test(error.message) ? "Mail o password sbagliate" : error.message);
+    return;
+  }
+  ls(GKEY, "1"); sheet = null;
+  toast("Sei in modalità gestore");
+  await syncNow(true);
+}
+async function logout(){
+  ls(GKEY, null); SESSION = null; sheet = null;
+  if(SB) await SB.auth.signOut();
+  await syncNow(true);
+  toast("Uscito dalla modalità gestore");
+}
+function testoSync(){
+  const coda = QUEUE.length ? " Ci sono " + QUEUE.length + " modifiche in attesa di partire." : "";
+  if(SYNC.stato === "corso") return "Sto sincronizzando…";
+  if(SYNC.stato === "errore") return "Database non raggiungibile (" + SYNC.msg + "). Continua a segnare: le modifiche restano sul telefono e partono da sole appena torna la rete." + coda;
+  if(SYNC.stato === "locale") return "Senza rete. L'app funziona lo stesso e salva sul telefono." + coda;
+  if(canWrite() && !SESSION) return "Modalità gestore attiva su questo dispositivo, ma la sessione è scaduta: rifai l'accesso per rimandare i dati online." + coda;
+  if(canWrite()) return "Modalità gestore: ogni modifica finisce subito sul database." + coda;
+  return "Sola lettura: vedi i dati aggiornati ma non puoi modificarli.";
+}
+const AZIONI_LETTURA = new Set(["home","closesheet","champs","setchamp","openev","step","player",
+  "loca","loca-png","loca-pdf","loca-share","shareclass","shareev","export","sync","login","logout","dologin"]);
 
 /* ---------- locandina ---------- */
 let LOCA = null;
@@ -1060,8 +1295,9 @@ function doImport(file){
 }
 
 D = load() || fresh();
-save();
+try{ localStorage.setItem(KEY, JSON.stringify(D)); }catch(e){}
 render();
+initSync();
 </script>
 </body>
 </html>
