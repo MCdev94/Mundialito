@@ -113,6 +113,12 @@ button{cursor:pointer;}
   font-variant-numeric:tabular-nums;}
 .pair .nm{flex:1;font-size:15.5px;line-height:1.3;}
 .pair button{border:0;background:transparent;color:var(--ink-soft);font-size:13.5px;padding:4px;}
+.pair .mv{width:38px;height:40px;border:1px solid var(--line);border-radius:10px;font-size:17px;line-height:1;}
+.pair .mv[disabled]{opacity:.3;}
+.ptin{width:66px;height:44px;text-align:center;border:1px solid var(--line);background:var(--field);
+  border-radius:10px;font-size:21px;font-weight:700;font-stretch:112%;font-variant-numeric:tabular-nums;
+  -moz-appearance:textfield;}
+.ptin::-webkit-outer-spin-button,.ptin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 
 .match{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
   margin-bottom:12px;overflow:hidden;}
@@ -222,7 +228,8 @@ function fresh(){
     const id = uid(); d.players.push({id, name:p.n, sex:p.s}); byName[p.n] = id;
   });
   (SEED && SEED.champs || []).forEach(c => {
-    const ch = {id:uid(), name:c.name, ed:c.ed, type:c.type, soglia:c.soglia, bonus:c.bonus, carry:{}, events:[]};
+    const ch = {id:uid(), name:c.name, ed:c.ed, type:c.type, soglia:c.soglia, bonus:c.bonus,
+      settimane:c.settimane || 8, carry:{}, bonusAss:null, events:[]};
     Object.keys(c.carry || {}).forEach(n => { if(byName[n]) ch.carry[byName[n]] = c.carry[n]; });
     d.champs.push(ch);
   });
@@ -240,27 +247,62 @@ function toast(m){
 }
 
 /* ---------- punteggi ---------- */
-function placements(ev){
+function ordineDaTabellone(ev){
   const out = [];
-  ev.matches.forEach(m => {
+  (ev.matches || []).forEach(m => {
     if(m.pb === null || m.pb === undefined){ out.push(m.pa); return; }
     const a = m.winner === "a";
     out.push(a ? m.pa : m.pb); out.push(a ? m.pb : m.pa);
   });
   return out;
 }
+function placements(ev){
+  if(ev.ordine && ev.ordine.length) return ev.ordine.filter(i => ev.pairs[i]);
+  return ordineDaTabellone(ev);
+}
+/* base: 4 punti per campo in gioco -> 3 campi 12, 4 campi 16, 5 campi 20 */
+function baseSerata(ev){
+  const campi = (ev.matches && ev.matches.length) || Math.ceil(ev.pairs.length / 2);
+  return 4 * Math.max(1, campi);
+}
+function puntiDefault(ev, k){
+  const m = ev.mult || 1;
+  return Math.max(2 * m, (baseSerata(ev) - 2 * k) * m);
+}
+/* i punti stanno sulla posizione, non sulla coppia: il 1° posto vale sempre uguale */
+function initPunti(ev){
+  if(!ev.ordine || !ev.ordine.length) ev.ordine = ordineDaTabellone(ev);
+  if(!Array.isArray(ev.punti) || ev.punti.length !== ev.ordine.length){
+    const vecchi = Array.isArray(ev.punti) ? ev.punti : [];
+    ev.punti = ev.ordine.map((pi, k) => vecchi[k] !== undefined && vecchi[k] !== null ? vecchi[k] : puntiDefault(ev, k));
+  }
+}
 function eventPoints(ev){
   const out = {};
-  if(ev.status !== "chiuso") return out;
-  const N = ev.pairs.length;
+  if(ev.status !== "chiuso" || ev.finale) return out;
   placements(ev).forEach((pi, k) => {
-    const pts = (N - k) * 2 * (ev.mult || 1);
-    ev.pairs[pi].forEach(id => out[id] = pts);
+    const v = (Array.isArray(ev.punti) && ev.punti[k] !== undefined && ev.punti[k] !== null)
+      ? Number(ev.punti[k]) : puntiDefault(ev, k);
+    ev.pairs[pi].forEach(id => out[id] = v || 0);
   });
   return out;
 }
 const matchDone = m => (m.pb === null || m.pb === undefined) || m.winner === "a" || m.winner === "b";
 const evReady = ev => ev.matches.length > 0 && ev.matches.every(matchDone);
+function giornateChiuse(ch){ return (ch || C()).events.filter(e => e.status === "chiuso" && !e.finale).length; }
+function finaleDi(ch){ return (ch || C()).events.find(e => e.finale) || null; }
+function giornatePreviste(ch){ return ((ch || C()).settimane || 8) * 2; }
+function anteprimaBonus(ch){
+  ch = ch || C();
+  const t = totals(null, ch);
+  return D.players.filter(p => t[p.id].pres > ch.soglia).length;
+}
+function assegnaBonus(ch){
+  const t = totals(null, ch);
+  const mappa = {};
+  D.players.forEach(p => { if(t[p.id].pres > ch.soglia) mappa[p.id] = ch.bonus; });
+  ch.bonusAss = {quando:oggi(), soglia:ch.soglia, bonus:ch.bonus, mappa};
+}
 function ordered(ch){ return [...(ch||C()).events].sort((a,b) => (a.date||"").localeCompare(b.date||"") || a.created - b.created); }
 
 function totals(upTo, ch){
@@ -278,8 +320,9 @@ function totals(upTo, ch){
 function classifica(ch){
   ch = ch || C();
   const t = totals(null, ch);
+  const ass = ch.bonusAss && ch.bonusAss.mappa ? ch.bonusAss.mappa : null;
   return D.players.map(p => {
-    const bonus = t[p.id].pres > ch.soglia ? ch.bonus : 0;
+    const bonus = ass ? (ass[p.id] || 0) : 0;
     return {id:p.id, name:p.name, sex:p.sex, pts:t[p.id].pts, pres:t[p.id].pres, bonus, tot:t[p.id].pts + bonus};
   }).sort((a,b) => b.tot - a.tot || b.pres - a.pres || a.name.localeCompare(b.name));
 }
@@ -294,7 +337,37 @@ function buildBoard(ev){
   for(let k=0; k<order.length; k+=2)
     ev.matches.push({pa:order[k], pb:(k+1 < order.length ? order[k+1] : null), winner:null});
 }
+function prossimoTurno(ev){
+  if(ev.finale){
+    const vin = [], per = [];
+    ev.matches.forEach(m => {
+      if(m.pb === null || m.pb === undefined){ vin.push(m.pa); return; }
+      const a = m.winner === "a";
+      vin.push(a ? m.pa : m.pb); per.push(a ? m.pb : m.pa);
+    });
+    const out = [];
+    if(vin.length >= 2) out.push({pa:vin[0], pb:vin[1], winner:null});
+    if(per.length >= 2) out.push({pa:per[0], pb:per[1], winner:null});
+    return out;
+  }
+  const campi = ev.matches.length;
+  const pos = Array.from({length:campi}, () => []);
+  ev.matches.forEach((m,i) => {
+    if(m.pb === null || m.pb === undefined){ pos[i].push(m.pa); return; }
+    const w = m.winner === "a" ? m.pa : m.pb;
+    const l = m.winner === "a" ? m.pb : m.pa;
+    pos[Math.max(0, i-1)].push(w);
+    pos[Math.min(campi-1, i+1)].push(l);
+  });
+  return pos.filter(a => a.length)
+            .map(a => ({pa:a[0], pb:a.length > 1 ? a[1] : null, winner:null}));
+}
 function campoLabel(ev, i){
+  if(ev.finale){
+    const t = (ev.storico || []).length + 1;
+    if(t === 1) return "SEMIFINALE " + (i + 1);
+    return i === 0 ? "FINALE" : "3° E 4° POSTO";
+  }
   const c = ev.campi || D.settings.campi || 5;
   const turno = Math.floor(i / c) + 1;
   return "CAMPO " + (i % c + 1) + (turno > 1 ? " · " + turno + "° TURNO" : "");
@@ -349,8 +422,8 @@ function renderSerate(){
   ${list.length ? list.map(e => `
     <button class="card card--tap" data-act="openev" data-id="${e.id}">
       <div class="card__row"><span class="card__t">${esc(e.name)}</span>
-        <span>${e.mult===2?'<span class="badge badge--x2">x2</span> ':''}<span class="badge ${e.status==="chiuso"?"":"badge--soft"}">${e.status==="chiuso"?"chiusa":"aperta"}</span></span></div>
-      <p class="card__s">${dataIt(e.date)} · ${e.pairs.length} copp${e.pairs.length===1?"ia":"ie"}</p>
+        <span><span class="badge ${e.status==="chiuso"?"":"badge--soft"}">${e.status==="chiuso"?"chiusa":"aperta"}</span></span></div>
+      <p class="card__s">${dataIt(e.date)} · ${e.finale ? "finale a 8" : e.pairs.length + " copp" + (e.pairs.length===1?"ia":"ie")}</p>
     </button>`).join("")
   : `<p class="empty">Nessuna serata in questo campionato.</p>`}
   </div>`;
@@ -419,21 +492,53 @@ function renderEvento(){
   }
 
   if(step === "tabellone"){
-    body = `<div class="block"><h2>Tabellone</h2>
-    <p class="hint">Coppie ordinate per somma punti. Tocca chi ha vinto.</p>
+    const turno = (ev.storico || []).length + 1;
+    const fin = !!ev.finale;
+    body = `<div class="block"><h2>${fin ? (turno === 1 ? "Semifinali" : "Finale") : (turno === 1 ? "Ingresso in campo" : turno + "° turno")}</h2>
+    <p class="hint">${fin
+      ? (turno === 1 ? "I primi 8 della classifica, accoppiati primo con ottavo e così via. Tocca chi passa."
+                     : "Le due vincenti si giocano il titolo, le due perdenti il terzo posto.")
+      : (turno === 1 ? "Coppie ordinate per somma punti. Finita la partita, tocca chi ha vinto."
+                     : "Chi ha vinto è salito di un campo, chi ha perso è sceso. Tocca di nuovo i vincitori.")}</p>
     ${ev.matches.map((m,i) => matchCard(ev,m,i)).join("")}</div>
     <div class="block">
-      <button class="btn btn--ghost" data-act="loca">Crea la locandina</button>
-      <button class="btn" data-act="close" ${evReady(ev)?"":"disabled"}>Chiudi la serata e assegna i punti</button>
+      ${fin && turno >= 2
+        ? `<button class="btn" data-act="close" ${evReady(ev)?"":"disabled"}>Proclama i campioni</button>`
+        : `<button class="btn" data-act="turno" ${evReady(ev)?"":"disabled"}>${fin ? "Vai alla finale" : "Turno successivo: chi vince sale"}</button>`}
+      ${!fin ? `<button class="btn btn--ghost" data-act="vaipunti" ${evReady(ev)?"":"disabled"}>Finita la serata: vai ai punti</button>` : ""}
       ${!evReady(ev)?`<p class="note">Segna il vincitore di ogni campo.</p>`:""}
+      <button class="btn btn--quiet" data-act="loca">Crea la locandina di questo turno</button>
+      ${turno > 1 ? `<button class="btn btn--quiet" data-act="indietro">Annulla l'ultimo turno</button>` : ""}
       <button class="btn btn--quiet" data-act="step" data-v="coppie">Modifica le coppie</button>
+    </div>`;
+  }
+
+  if(step === "punti"){
+    initPunti(ev);
+    const campi = (ev.matches && ev.matches.length) || 0;
+    body = `<div class="block"><h2>Punti della serata</h2>
+    <p class="hint">Posizione finale dopo ${(ev.storico||[]).length+1} turni. ${campi} camp${campi===1?"o":"i"}: ${baseSerata(ev)} punti alla prima coppia e poi a scalare di 2. Puoi spostare le coppie o correggere i numeri a mano.</p>
+    ${ev.ordine.map((pi,k) => `
+      <div class="pair">
+        <span class="seed">${k+1}°</span>
+        <span class="nm">${esc(nm(ev.pairs[pi][0]))}<br>${esc(nm(ev.pairs[pi][1]))}</span>
+        <button class="mv" data-act="su" data-k="${k}" ${k?"":"disabled"} aria-label="Sposta su">↑</button>
+        <button class="mv" data-act="giu" data-k="${k}" ${k<ev.ordine.length-1?"":"disabled"} aria-label="Sposta giù">↓</button>
+        <input class="ptin" type="number" inputmode="numeric" min="0" max="999"
+               data-act="pt" data-k="${k}" value="${ev.punti[k]}" aria-label="Punti">
+      </div>`).join("")}
+    </div>
+    <div class="block">
+      <button class="btn" data-act="close">Chiudi la serata e aggiorna la classifica</button>
+      <button class="btn btn--quiet" data-act="ricalcola">Ricalcola in automatico</button>
+      <button class="btn btn--quiet" data-act="step" data-v="tabellone">Torna al tabellone</button>
     </div>`;
   }
 
   app.innerHTML = `
   <header class="top"><button class="back" data-act="home">← Serate</button>
     <div class="top__row"><div><h1 class="top__title">${esc(ev.name)}</h1>
-      <p class="top__meta">${dataIt(ev.date)}${ev.mult===2?" · vale doppio":""} · ${ev.campi} camp${ev.campi===1?"o":"i"}</p></div>
+      <p class="top__meta">${dataIt(ev.date)} · ${ev.campi} camp${ev.campi===1?"o":"i"}</p></div>
       <button class="badge badge--soft" data-act="editev">Modifica</button></div>
   </header>${body}`;
 }
@@ -456,10 +561,29 @@ function matchCard(ev,m,i){
 
 function renderEventoChiuso(ev){
   const pts = eventPoints(ev), pl = placements(ev);
+  if(ev.finale){
+    const podio = ["Campioni", "Finalisti", "Terzo posto", "Quarto posto"];
+    return app.innerHTML = `
+    <header class="top"><button class="back" data-act="home">← Serate</button>
+      <div class="top__row"><div><h1 class="top__title">${esc(ev.name)}</h1>
+        <p class="top__meta">${dataIt(ev.date)} · ${esc(C().name)} ${esc(C().ed)}</p></div>
+        <span class="badge">chiusa</span></div></header>
+    <table class="table"><thead><tr><th>Posizione</th><th></th></tr></thead><tbody>
+      ${pl.map((pi,k) => { const pr = ev.pairs[pi];
+        return `<tr class="${k===0?"lead":""}">
+          <td><span class="nmc"><span class="pos">${k+1}°</span>${esc(nm(pr[0]))} · ${esc(nm(pr[1]))}</span></td>
+          <td>${podio[k] || ""}</td></tr>`; }).join("")}
+    </tbody></table>
+    <div class="block">
+      <button class="btn btn--ghost" data-act="loca">Crea la locandina</button>
+      <button class="btn btn--quiet" data-act="reopen">Riapri la finale</button>
+      <button class="btn btn--danger" data-act="delev">Elimina la finale</button>
+    </div>`;
+  }
   app.innerHTML = `
   <header class="top"><button class="back" data-act="home">← Serate</button>
     <div class="top__row"><div><h1 class="top__title">${esc(ev.name)}</h1>
-      <p class="top__meta">${dataIt(ev.date)}${ev.mult===2?" · punti doppi":""} · ${ev.pairs.length} coppie</p></div>
+      <p class="top__meta">${dataIt(ev.date)} · ${ev.pairs.length} coppie · ${(ev.storico||[]).length+1} turni</p></div>
       <span class="badge">chiusa</span></div></header>
   <table class="table"><thead><tr><th>Coppia</th><th>Punti</th></tr></thead><tbody>
     ${pl.map((pi,k)=>{ const pr = ev.pairs[pi];
@@ -470,7 +594,8 @@ function renderEventoChiuso(ev){
   <div class="block">
     <button class="btn btn--ghost" data-act="loca">Crea la locandina</button>
     <button class="btn btn--ghost" data-act="shareev">Copia il risultato</button>
-    <button class="btn btn--quiet" data-act="reopen">Riapri per correggere</button>
+    <button class="btn btn--quiet" data-act="correggi">Correggi ordine e punti</button>
+    <button class="btn btn--quiet" data-act="reopen">Riapri il tabellone</button>
     <button class="btn btn--danger" data-act="delev">Elimina la serata</button>
   </div>`;
 }
@@ -481,13 +606,20 @@ function renderClassifica(){
   app.innerHTML = `
   <header class="top">${champBtn()}
     <div class="top__row"><div><h1 class="top__title">Classifica</h1>
-    <p class="top__meta">Bonus +${c.bonus} oltre ${c.soglia} presenze</p></div></div></header>
+    <p class="top__meta">${c.bonusAss
+      ? "Bonus presenze incluso: +" + c.bonusAss.bonus + " oltre " + c.bonusAss.soglia + " presenze"
+      : giornateChiuse(c) + (giornateChiuse(c)===1?" giornata":" giornate") + " su " + giornatePreviste(c) + " · bonus non ancora assegnato"}</p></div></div></header>
   ${list.length?`<table class="table"><thead><tr><th>Giocatore</th><th>Punti</th><th>Pres.</th></tr></thead>
    <tbody>${list.map((r,i)=>`<tr class="rowtap ${i===0?"lead":""}" data-act="player" data-id="${r.id}">
       <td><span class="nmc"><span class="pos">${i+1}</span>${esc(r.name)}</span></td>
       <td class="pts">${r.tot}${r.bonus?` <span class="bn">+${r.bonus}</span>`:""}</td>
       <td>${r.pres}</td></tr>`).join("")}</tbody></table>
-  <button class="btn btn--ghost" style="margin-top:16px" data-act="shareclass">Copia la classifica</button>`
+  <button class="btn btn--ghost" style="margin-top:16px" data-act="shareclass">Copia la classifica</button>
+  ${(() => { const f = finaleDi(c);
+    if(f) return `<button class="btn btn--quiet" data-act="openev" data-id="${f.id}">Apri la finale a 8</button>`;
+    if(list.length < 8) return `<p class="note">Servono almeno 8 giocatori con presenze per creare la finale.</p>`;
+    return `<button class="btn btn--quiet" data-act="finale8">Crea la finale a 8</button>`;
+  })()}`
   :`<p class="empty">Ancora nessuna serata chiusa qui.</p>`}`;
 }
 
@@ -524,13 +656,28 @@ function renderAltro(){
     <label class="fld"><span>Nome</span><input value="${esc(c.name)}" data-act="cname"></label>
     <label class="fld"><span>Edizione</span><input value="${esc(c.ed)}" data-act="ced"></label>
     <p class="hint">Tipo: ${tipoLabel(c.type)} — non si cambia dopo le prime serate.</p>
-    <h2 style="margin-top:18px">Bonus presenze</h2>
-    <div class="stepper" style="margin-bottom:10px">
-      <button data-act="cset" data-k="soglia" data-v="-1">−</button><b>${c.soglia}</b>
-      <button data-act="cset" data-k="soglia" data-v="1">+</button><small>presenze minime</small></div>
+    <h2 style="margin-top:18px">Durata dell'edizione</h2>
     <div class="stepper">
-      <button data-act="cset" data-k="bonus" data-v="-1">−</button><b>${c.bonus}</b>
-      <button data-act="cset" data-k="bonus" data-v="1">+</button><small>punti bonus</small></div>
+      <button data-act="cset" data-k="settimane" data-v="-1">−</button><b>${c.settimane || 8}</b>
+      <button data-act="cset" data-k="settimane" data-v="1">+</button><small>settimane, 2 giornate ciascuna</small></div>
+    <p class="note">${giornateChiuse(c)} giornat${giornateChiuse(c)===1?"a chiusa":"e chiuse"} su ${giornatePreviste(c)} previste.</p>
+  </div>
+
+  <div class="block"><h2>Bonus presenze</h2>
+    ${c.bonusAss ? `
+      <p class="hint">Assegnato il ${dataIt(c.bonusAss.quando)}: ${c.bonusAss.bonus} punti a chi aveva più di ${c.bonusAss.soglia} presenze, ${Object.keys(c.bonusAss.mappa).length} giocatori premiati. È già dentro la classifica.</p>
+      <button class="btn btn--danger" data-act="bonusvia">Annulla il bonus assegnato</button>
+    ` : `
+      <p class="hint">Si assegna una volta sola, a fine edizione. Finché non lo fai la classifica resta senza bonus.</p>
+      <div class="stepper" style="margin-bottom:10px">
+        <button data-act="cset" data-k="soglia" data-v="-1">−</button><b>${c.soglia}</b>
+        <button data-act="cset" data-k="soglia" data-v="1">+</button><small>presenze minime</small></div>
+      <div class="stepper" style="margin-bottom:14px">
+        <button data-act="cset" data-k="bonus" data-v="-1">−</button><b>${c.bonus}</b>
+        <button data-act="cset" data-k="bonus" data-v="1">+</button><small>punti bonus</small></div>
+      <p class="note">Con questi valori lo prenderebbero ${anteprimaBonus(c)} giocatori${giornateChiuse(c) < giornatePreviste(c) ? `, ma ne mancano ancora ${giornatePreviste(c) - giornateChiuse(c)} di giornate` : ""}.</p>
+      <button class="btn" data-act="bonusdai">Assegna ora il bonus presenze</button>
+    `}
   </div>
   <div class="block"><h2>Campi del circolo</h2>
     <div class="stepper"><button data-act="set" data-k="campi" data-v="-1">−</button><b>${D.settings.campi}</b>
@@ -585,6 +732,9 @@ function renderSheet(){
       <div class="block" style="margin-top:0"><h2>Tipo</h2><div class="chips">
         ${["maschile","femminile","misto"].map(x=>`<button class="chip" data-act="chtype" data-v="${x}" aria-pressed="${t.type===x}">${tipoLabel(x)}</button>`).join("")}
       </div></div>
+      <div class="block"><h2>Durata</h2>
+        <div class="stepper"><button data-act="chset" data-k="settimane" data-v="-1">−</button>
+          <b>${t.settimane}</b><button data-act="chset" data-k="settimane" data-v="1">+</button><small>settimane</small></div></div>
       <div class="block"><h2>Bonus presenze</h2>
         <div class="stepper" style="margin-bottom:10px"><button data-act="chset" data-k="soglia" data-v="-1">−</button>
           <b>${t.soglia}</b><button data-act="chset" data-k="soglia" data-v="1">+</button><small>presenze minime</small></div>
@@ -658,10 +808,7 @@ function renderSheet(){
       <label class="fld"><span>Nome</span><input id="ev_name" value="${esc(v.name)}" placeholder="8ª giornata"></label>
       <div class="row2"><label class="fld" style="flex:2"><span>Data</span><input id="ev_date" type="date" value="${v.date}"></label>
         <label class="fld" style="flex:1"><span>Ora</span><input id="ev_ora" value="${esc(v.ora||"")}" placeholder="11:30"></label></div>
-      <div class="block" style="margin-top:0"><h2>Valore</h2><div class="chips">
-        <button class="chip" data-act="mult" data-v="1" aria-pressed="${sheet.tmp.mult!==2}">Normale</button>
-        <button class="chip" data-act="mult" data-v="2" aria-pressed="${sheet.tmp.mult===2}">Notturna x2</button></div></div>
-      <div class="block"><h2>Campi</h2><div class="stepper">
+      <div class="block" style="margin-top:0"><h2>Campi</h2><div class="stepper">
         <button data-act="evcampi" data-v="-1">−</button><b id="ev_campi">${sheet.tmp.campi}</b>
         <button data-act="evcampi" data-v="1">+</button></div></div>
       <div class="block"><button class="btn" data-act="saveev">${ev?"Salva":"Crea la serata"}</button>
@@ -729,6 +876,12 @@ document.addEventListener("input", e => {
   }
   if(e.target.matches('[data-act="cname"]') && canWrite()){ C().name = e.target.value; save(); }
   if(e.target.matches('[data-act="ced"]') && canWrite()){ C().ed = e.target.value; save(); }
+  if(e.target.matches('[data-act="pt"]') && canWrite()){
+    const ev2 = EV(openEvent); if(!ev2) return;
+    const v = e.target.value === "" ? null : Math.max(0, Math.min(999, parseInt(e.target.value,10)));
+    if(Array.isArray(ev2.punti)) ev2.punti[+e.target.dataset.k] = Number.isNaN(v) ? null : v;
+    save();
+  }
   if(e.target.matches('[data-act="firma"]') && canWrite()){ D.settings.firma = e.target.value; save(); }
   if(e.target.matches('[data-act="logo"]')) setLogo(e.target.files[0]);
   if(e.target.matches('[data-act="import"]')) doImport(e.target.files[0]);
@@ -747,17 +900,19 @@ document.addEventListener("click", e => {
   /* campionati */
   if(a === "champs"){ sheet = {tipo:"champs"}; render(); return; }
   if(a === "setchamp"){ D.cur = el.dataset.id; sheet = null; openEvent = null; tab = "serate"; search = ""; save(); render(); return; }
-  if(a === "newchamp"){ sheet = {tipo:"newchamp", tmp:{name:"", ed:"", type:"maschile", soglia:8, bonus:5}}; render(); return; }
+  if(a === "newchamp"){ sheet = {tipo:"newchamp", tmp:{name:"", ed:"", type:"maschile", soglia:8, bonus:5, settimane:8}}; render(); return; }
   if(a === "chtype"){ sheet.tmp.type = el.dataset.v; render(); return; }
   if(a === "chset"){
-    const k = el.dataset.k, lim = k === "soglia" ? [0,30] : [0,50];
+    const k = el.dataset.k;
+    const lim = k === "soglia" ? [0,40] : k === "settimane" ? [6,12] : [0,50];
     sheet.tmp[k] = Math.max(lim[0], Math.min(lim[1], sheet.tmp[k] + (+el.dataset.v))); render(); return;
   }
   if(a === "savechamp"){
     const name = (document.getElementById("ch_name").value || "").trim() || "Mundialito " + tipoLabel(sheet.tmp.type).toLowerCase();
     const ed = (document.getElementById("ch_ed").value || "").trim() || "1ª edizione";
     const id = uid();
-    D.champs.push({id, name, ed, type:sheet.tmp.type, soglia:sheet.tmp.soglia, bonus:sheet.tmp.bonus, carry:{}, events:[]});
+    D.champs.push({id, name, ed, type:sheet.tmp.type, soglia:sheet.tmp.soglia, bonus:sheet.tmp.bonus,
+      settimane:sheet.tmp.settimane || 8, carry:{}, bonusAss:null, events:[]});
     D.cur = id; sheet = null; tab = "serate"; save(); render(); toast("Campionato creato"); return;
   }
 
@@ -767,7 +922,6 @@ document.addEventListener("click", e => {
   if(a === "openev"){ openEvent = el.dataset.id; const x = EV(openEvent);
     step = x.matches && x.matches.length ? "tabellone" : (x.pairs.length ? "coppie" : "presenti");
     sel = []; search = ""; render(); return; }
-  if(a === "mult"){ sheet.tmp.mult = +el.dataset.v; render(); return; }
   if(a === "evcampi"){ sheet.tmp.campi = Math.max(1, Math.min(12, sheet.tmp.campi + (+el.dataset.v)));
     document.getElementById("ev_campi").textContent = sheet.tmp.campi; return; }
   if(a === "saveev"){
@@ -822,8 +976,51 @@ document.addEventListener("click", e => {
   if(a === "board"){ buildBoard(ev); step = "tabellone"; save(); render(); return; }
   if(a === "win"){ const m = ev.matches[+el.dataset.i];
     m.winner = (m.winner === el.dataset.s) ? null : el.dataset.s; save(); render(); return; }
-  if(a === "close"){ ev.status = "chiuso"; save(); render(); toast("Punti assegnati"); return; }
+  if(a === "finale8"){
+    if(finaleDi(c)){ toast("La finale esiste già"); return; }
+    const top = classifica(c).filter(r => r.pres > 0).slice(0, 8);
+    if(top.length < 8){ toast("Servono almeno 8 giocatori con presenze"); return; }
+    if(!confirm("Creo la finale fra i primi 8: " + top.map(r => r.name).join(", ") + "?")) return;
+    const ids = top.map(r => r.id);
+    const coppie = [[ids[0], ids[7]], [ids[3], ids[4]], [ids[1], ids[6]], [ids[2], ids[5]]];
+    const seeds = {}; const t = totals(null, c);
+    coppie.forEach((pr,i) => seeds[i] = (t[pr[0]] ? t[pr[0]].pts : 0) + (t[pr[1]] ? t[pr[1]].pts : 0));
+    const id = uid();
+    c.events.push({id, created:Date.now(), name:"Finale a 8", date:oggi(), ora:"", mult:1, campi:2,
+      finale:true, status:"bozza", presenti:ids, pairs:coppie, seeds,
+      matches:[{pa:0, pb:1, winner:null}, {pa:2, pb:3, winner:null}],
+      storico:[], ordine:null, punti:null});
+    openEvent = id; step = "tabellone"; save(); render();
+    toast("Finale creata: controlla le coppie"); return;
+  }
+  if(a === "turno"){
+    ev.storico = ev.storico || [];
+    ev.storico.push(ev.matches.map(m => ({pa:m.pa, pb:m.pb, winner:m.winner})));
+    ev.matches = prossimoTurno(ev);
+    ev.ordine = null; ev.punti = null;
+    save(); render(); toast((ev.storico.length + 1) + "° turno pronto");
+    return;
+  }
+  if(a === "indietro"){
+    if(!(ev.storico || []).length) return;
+    ev.matches = ev.storico.pop();
+    ev.ordine = null; ev.punti = null;
+    save(); render(); return;
+  }
+  if(a === "vaipunti"){ initPunti(ev); step = "punti"; save(); render(); return; }
+  if(a === "su" || a === "giu"){
+    const k = +el.dataset.k, j = a === "su" ? k-1 : k+1;
+    if(j < 0 || j >= ev.ordine.length) return;
+    const t2 = ev.ordine[k]; ev.ordine[k] = ev.ordine[j]; ev.ordine[j] = t2;
+    save(); render(); return;
+  }
+  if(a === "ricalcola"){
+    ev.ordine = ordineDaTabellone(ev); ev.punti = null; initPunti(ev);
+    save(); render(); toast("Punti ricalcolati"); return;
+  }
+  if(a === "close"){ ev.status = "chiuso"; save(); render(); toast("Classifica aggiornata"); return; }
   if(a === "reopen"){ ev.status = "bozza"; step = "tabellone"; save(); render(); return; }
+  if(a === "correggi"){ ev.status = "bozza"; initPunti(ev); step = "punti"; save(); render(); return; }
 
   /* giocatori */
   if(a === "player"){ sheet = {tipo:"player", id:el.dataset.id}; render(); return; }
@@ -839,8 +1036,23 @@ document.addEventListener("click", e => {
   }
 
   /* impostazioni */
-  if(a === "cset"){ const k = el.dataset.k, lim = k === "soglia" ? [0,30] : [0,50];
-    c[k] = Math.max(lim[0], Math.min(lim[1], c[k] + (+el.dataset.v))); save(); render(); return; }
+  if(a === "cset"){
+    const k = el.dataset.k;
+    const lim = k === "soglia" ? [0,40] : k === "settimane" ? [6,12] : [0,50];
+    const base = k === "settimane" ? (c.settimane || 8) : c[k];
+    if(k !== "settimane" && c.bonusAss){ toast("Annulla prima il bonus già assegnato"); return; }
+    c[k] = Math.max(lim[0], Math.min(lim[1], base + (+el.dataset.v))); save(); render(); return;
+  }
+  if(a === "bonusdai"){
+    if(c.bonusAss){ toast("Il bonus è già stato assegnato"); return; }
+    const quanti = anteprimaBonus(c);
+    if(!confirm(`Assegno ${c.bonus} punti a chi ha più di ${c.soglia} presenze? Riguarda ${quanti} giocatori e si fa una volta sola.`)) return;
+    assegnaBonus(c); save(); render(); toast("Bonus assegnato a " + quanti + " giocatori"); return;
+  }
+  if(a === "bonusvia"){
+    if(!confirm("Tolgo il bonus dalla classifica? Potrai riassegnarlo con valori diversi.")) return;
+    c.bonusAss = null; save(); render(); toast("Bonus annullato"); return;
+  }
   if(a === "set"){ D.settings.campi = Math.max(1, Math.min(12, D.settings.campi + (+el.dataset.v))); save(); render(); return; }
   if(a === "export"){ doExport(); return; }
   if(a === "wipe"){ if(confirm("Cancello tutto da questo browser?")){
@@ -896,12 +1108,13 @@ function rowsOf(st){
   const out = {players:[], champs:[], events:[], settings:[]};
   st.players.forEach(p => out.players.push({id:p.id, name:p.name, sex:p.sex || "M", archived:!!p.archived}));
   st.champs.forEach((c,i) => out.champs.push({id:c.id, name:c.name, ed:c.ed || "", type:c.type,
-    soglia:c.soglia, bonus:c.bonus, carry:c.carry || {}, ordine:i}));
+    soglia:c.soglia, bonus:c.bonus, settimane:c.settimane || 8, bonus_ass:c.bonusAss || null,
+    carry:c.carry || {}, ordine:i}));
   st.champs.forEach(c => (c.events || []).forEach(e => out.events.push({
     id:e.id, champ_id:c.id, name:e.name, data:e.date || null, ora:e.ora || null,
-    mult:e.mult || 1, campi:e.campi || 5, status:e.status || "bozza",
-    presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [],
-    seeds:e.seeds || {}, created:e.created || 0})));
+    mult:e.mult || 1, campi:e.campi || 5, status:e.status || "bozza", finale:!!e.finale,
+    presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [], seeds:e.seeds || {},
+    storico:e.storico || [], ordine:e.ordine || null, punti:e.punti || null, created:e.created || 0})));
   out.settings.push({id:1, data:st.settings || {}});
   return out;
 }
@@ -911,13 +1124,14 @@ function stateFromRows(r){
   d.players = r.players.map(p => ({id:p.id, name:p.name, sex:p.sex || "M", archived:!!p.archived}));
   d.champs = [...r.champs].sort((a,b) => (a.ordine || 0) - (b.ordine || 0)).map(c => ({
     id:c.id, name:c.name, ed:c.ed || "", type:c.type, soglia:c.soglia, bonus:c.bonus,
-    carry:c.carry || {}, events:[]}));
+    settimane:c.settimane || 8, bonusAss:c.bonus_ass || null, carry:c.carry || {}, events:[]}));
   const idx = {}; d.champs.forEach(c => idx[c.id] = c);
   r.events.forEach(e => {
     const c = idx[e.champ_id]; if(!c) return;
     c.events.push({id:e.id, created:Number(e.created) || 0, name:e.name, date:e.data || "",
-      ora:e.ora || "", mult:e.mult || 1, campi:e.campi || 5, status:e.status || "bozza",
-      presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [], seeds:e.seeds || {}});
+      ora:e.ora || "", mult:e.mult || 1, campi:e.campi || 5, status:e.status || "bozza", finale:!!e.finale,
+      presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [], seeds:e.seeds || {},
+      storico:e.storico || [], ordine:e.ordine || null, punti:e.punti || null});
   });
   d.cur = d.champs.length ? d.champs[0].id : null;
   return d;
@@ -1124,8 +1338,11 @@ async function drawLocandina(ev){
   x.fillText(titolo, R, 96);
 
   x.fillStyle = "#2F5F8E";
-  fitFont(x, "INGRESSO IN CAMPO", R - left, "700", 42, 20);
-  x.fillText("INGRESSO IN CAMPO", R, 152);
+  const turno = (ev.storico || []).length + 1;
+  const riga1 = ev.finale ? (turno === 1 ? "SEMIFINALI" : "FINALE")
+                          : (turno === 1 ? "INGRESSO IN CAMPO" : turno + "° TURNO");
+  fitFont(x, riga1, R - left, "700", 42, 20);
+  x.fillText(riga1, R, 152);
   const sub = "(" + (ev.name || "").toUpperCase() + ")";
   fitFont(x, sub, R - left, "700", 42, 20);
   x.fillText(sub, R, 202);
@@ -1257,7 +1474,7 @@ function testoClassifica(){
 }
 function testoEvento(ev){
   const pts = eventPoints(ev);
-  return [C().name, ev.name + (ev.mult===2?" (x2)":"") + " · " + dataIt(ev.date), ""]
+  return [C().name, ev.name + " · " + dataIt(ev.date), ""]
     .concat(placements(ev).map((pi,k) => {
       const pr = ev.pairs[pi];
       return `${k+1}. ${nm(pr[0])} e ${nm(pr[1])} — ${pts[pr[0]]||0} pt`;
