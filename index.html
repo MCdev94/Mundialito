@@ -410,16 +410,24 @@ function assegnaBonus(ch){
 }
 function ordered(ch){ return [...(ch||C()).events].sort((a,b) => (a.date||"").localeCompare(b.date||"") || a.created - b.created); }
 
+/* Punteggio vero di ogni giocatore nel torneo: punti fatti in campo + bonus presenze, se raggiunto.
+   pts    -> il punteggio che conta ovunque (classifica, tabellone, abbinamenti, locandina)
+   campo  -> i soli punti fatti giocando, senza bonus
+   bonus  -> i punti bonus presi (0 se non ancora raggiunto) */
 function totals(upTo, ch){
   ch = ch || C();
   const t = {};
-  D.players.forEach(p => { const c = ch.carry[p.id] || {}; t[p.id] = {pts:c.pts||0, pres:c.pres||0}; });
+  D.players.forEach(p => { const c = ch.carry[p.id] || {}; t[p.id] = {campo:c.pts||0, pres:c.pres||0}; });
   for(const ev of ordered(ch)){
     if(upTo && ev.id === upTo) break;
     if(ev.status !== "chiuso") continue;
     const pp = eventPoints(ev);
-    Object.keys(pp).forEach(id => { if(t[id]){ t[id].pts += pp[id]; t[id].pres += 1; } });
+    Object.keys(pp).forEach(id => { if(t[id]){ t[id].campo += pp[id]; t[id].pres += 1; } });
   }
+  Object.values(t).forEach(v => {
+    v.bonus = haBonus(v.pres, ch) ? ch.bonus : 0;
+    v.pts = v.campo + v.bonus;
+  });
   return t;
 }
 function haBonus(pres, ch){ return (ch.soglia || 0) > 0 && (ch.bonus || 0) > 0 && pres >= ch.soglia; }
@@ -427,8 +435,8 @@ function classifica(ch){
   ch = ch || C();
   const t = totals(null, ch);
   return D.players.map(p => {
-    const bonus = haBonus(t[p.id].pres, ch) ? ch.bonus : 0;
-    return {id:p.id, name:p.name, sex:p.sex, pts:t[p.id].pts, pres:t[p.id].pres, bonus, tot:t[p.id].pts + bonus};
+    const v = t[p.id];
+    return {id:p.id, name:p.name, sex:p.sex, pts:v.campo, pres:v.pres, bonus:v.bonus, tot:v.pts};
   }).sort((a,b) => b.tot - a.tot || b.pres - a.pres || a.name.localeCompare(b.name));
 }
 
@@ -756,7 +764,7 @@ function renderClassifica(){
 }
 function notaBonus(c, premiati){
   if(!(c.bonus > 0) || !(c.soglia > 0)) return "Bonus spento: metti punti e presenze per attivarlo.";
-  return `Chi arriva ad almeno ${c.soglia} presenze prende ${c.bonus} punti in più, una volta sola. `
+  return `Chi arriva ad almeno ${c.soglia} presenze prende ${c.bonus} punti in più, una volta sola, e valgono anche per tabellone e abbinamenti. `
     + (premiati ? `Finora l'hanno raggiunto in ${premiati}: hanno il nome in verde.` : "Per ora non l'ha raggiunto nessuno.");
 }
 function tabellaClassifica(list){
@@ -874,11 +882,10 @@ function renderSheet(){
     const righe = [];
     D.champs.forEach(ch => {
       const t = totals(null, ch);
-      const r = t[sheet.id]; if(!r || (!r.pts && !r.pres)) return;
-      const bonus = haBonus(r.pres, ch) ? ch.bonus : 0;
+      const r = t[sheet.id]; if(!r || (!r.campo && !r.pres)) return;
       const pos = classifica(ch).filter(x => x.pres > 0).findIndex(x => x.id === sheet.id) + 1;
       righe.push(`<tr><td>${esc(ch.name)}<br><span class="pt">${pos?`${pos}° posto`:""}</span></td>
-        <td class="pts">${r.pts + bonus}</td><td>${r.pres}</td></tr>`);
+        <td class="pts">${r.pts}${r.bonus ? `<br><span class="pt">di cui ${r.bonus} di bonus</span>` : ""}</td><td>${r.pres}</td></tr>`);
     });
     const sto = ordered().filter(e => e.status === "chiuso" && e.pairs.flat().includes(sheet.id)).reverse()
       .map(e => { const pp = eventPoints(e); const pr = e.pairs.find(x => x.includes(sheet.id));
