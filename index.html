@@ -158,6 +158,21 @@ button{cursor:pointer;}
   .lead td{background:color-mix(in srgb,var(--ball) 20%,var(--paper));}
 }
 .rowtap{cursor:pointer;}
+:root{--verde:#12805C;}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--verde:#3DDC97;} }
+:root[data-theme="dark"]{--verde:#3DDC97;}
+.conbonus{color:var(--verde);font-weight:700;}
+.bonus{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:16px;}
+.bonus__t{margin:0 0 10px;font-size:14px;font-weight:800;letter-spacing:.12em;color:var(--court);font-stretch:112%;}
+.bonus__row{display:flex;gap:10px;}
+.bonus__f{flex:1;display:block;}
+.bonus__f span{display:block;font-size:12.5px;color:var(--ink-soft);margin-bottom:5px;}
+.bonus__f input{width:100%;height:52px;text-align:center;border:1px solid var(--line);border-radius:12px;
+  background:var(--field);font-size:24px;font-weight:700;font-stretch:112%;font-variant-numeric:tabular-nums;
+  -moz-appearance:textfield;}
+.bonus__f input::-webkit-outer-spin-button,.bonus__f input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.bonus__f input:disabled{opacity:.7;}
+.bonus__n{margin:10px 0 0;font-size:13.5px;color:var(--ink-soft);}
 
 .toast{position:fixed;left:50%;transform:translateX(-50%);
   bottom:calc(var(--bar) + 22px + env(safe-area-inset-bottom,0px));
@@ -407,12 +422,12 @@ function totals(upTo, ch){
   }
   return t;
 }
+function haBonus(pres, ch){ return (ch.soglia || 0) > 0 && (ch.bonus || 0) > 0 && pres >= ch.soglia; }
 function classifica(ch){
   ch = ch || C();
   const t = totals(null, ch);
-  const ass = ch.bonusAss && ch.bonusAss.mappa ? ch.bonusAss.mappa : null;
   return D.players.map(p => {
-    const bonus = ass ? (ass[p.id] || 0) : 0;
+    const bonus = haBonus(t[p.id].pres, ch) ? ch.bonus : 0;
     return {id:p.id, name:p.name, sex:p.sex, pts:t[p.id].pts, pres:t[p.id].pres, bonus, tot:t[p.id].pts + bonus};
   }).sort((a,b) => b.tot - a.tot || b.pres - a.pres || a.name.localeCompare(b.name));
 }
@@ -711,25 +726,46 @@ function renderEventoChiuso(ev){
 /* --- classifica --- */
 function renderClassifica(){
   const c = C(), list = classifica().filter(r => r.pres > 0);
+  const premiati = list.filter(r => r.bonus).length;
+  const mod = canWrite();
   app.innerHTML = `
   <header class="top">${champBtn()}
     <div class="top__row"><div><h1 class="top__title">Classifica</h1>
-    <p class="top__meta">${c.bonusAss
-      ? "Bonus presenze incluso: +" + c.bonusAss.bonus + " oltre " + c.bonusAss.soglia + " presenze"
-      : giornateChiuse(c) + (giornateChiuse(c)===1?" giornata":" giornate") + " su " + giornatePreviste(c) + " · bonus non ancora assegnato"}</p></div></div></header>
-  ${list.length?`<table class="table"><thead><tr><th>Giocatore</th><th>Punti</th><th>Pres.</th></tr></thead>
-   <tbody>${list.map((r,i)=>`<tr class="rowtap ${i===0?"lead":""}" data-act="player" data-id="${r.id}">
-      <td><span class="nmc"><span class="pos">${i+1}</span>${esc(r.name)}</span></td>
-      <td class="pts">${r.tot}${r.bonus?` <span class="bn">+${r.bonus}</span>`:""}</td>
-      <td>${r.pres}</td></tr>`).join("")}</tbody></table>
+    <p class="top__meta">${giornateChiuse(c)} giornat${giornateChiuse(c)===1?"a":"e"} su ${giornatePreviste(c)}</p></div></div></header>
+
+  <section class="bonus">
+    <h2 class="bonus__t">BONUS</h2>
+    <div class="bonus__row">
+      <label class="bonus__f"><span>Punti da assegnare</span>
+        <input type="number" inputmode="numeric" min="0" max="50" data-act="bonuspunti" value="${c.bonus || 0}" ${mod?"":"disabled"}></label>
+      <label class="bonus__f"><span>Presenze da raggiungere</span>
+        <input type="number" inputmode="numeric" min="0" max="40" data-act="bonuspres" value="${c.soglia || 0}" ${mod?"":"disabled"}></label>
+    </div>
+    <p class="bonus__n" id="bonusNota">${notaBonus(c, premiati)}</p>
+  </section>
+
+  <div id="tabClass">${tabellaClassifica(list)}</div>
+  ${list.length ? `
   <button class="btn" style="margin-top:16px" data-act="stampaclass">Crea l'immagine della classifica</button>
   <button class="btn btn--ghost" data-act="shareclass">Copia la classifica come testo</button>
   ${(() => { const f = finaleDi(c);
     if(f) return `<button class="btn btn--quiet" data-act="openev" data-id="${f.id}">Apri la finale a 8</button>`;
     if(list.length < 8) return `<p class="note">Servono almeno 8 giocatori con presenze per creare la finale.</p>`;
     return `<button class="btn btn--quiet" data-act="finale8">Crea la finale a 8</button>`;
-  })()}`
-  :`<p class="empty">Ancora nessuna giornata chiusa qui.</p>`}`;
+  })()}` : ""}`;
+}
+function notaBonus(c, premiati){
+  if(!(c.bonus > 0) || !(c.soglia > 0)) return "Bonus spento: metti punti e presenze per attivarlo.";
+  return `Chi arriva ad almeno ${c.soglia} presenze prende ${c.bonus} punti in più, una volta sola. `
+    + (premiati ? `Finora l'hanno raggiunto in ${premiati}: hanno il nome in verde.` : "Per ora non l'ha raggiunto nessuno.");
+}
+function tabellaClassifica(list){
+  if(!list.length) return `<p class="empty">Ancora nessuna giornata chiusa qui.</p>`;
+  return `<table class="table"><thead><tr><th>Giocatore</th><th>Punti</th><th>Presenze</th></tr></thead>
+   <tbody>${list.map((r,i) => `<tr class="rowtap ${i===0?"lead":""}" data-act="player" data-id="${r.id}">
+      <td><span class="nmc"><span class="pos">${i+1}</span><span class="${r.bonus?"conbonus":""}">${esc(r.name)}</span></span></td>
+      <td class="pts">${r.tot}</td>
+      <td>${r.pres}</td></tr>`).join("")}</tbody></table>`;
 }
 
 /* --- giocatori --- */
@@ -773,22 +809,6 @@ function renderAltro(){
       <button data-act="cset" data-k="base" data-v="1">+</button><small>quelle dei vecchi fogli</small></div>
   </div>
 
-  <div class="block"><h2>Bonus presenze</h2>
-    ${c.bonusAss ? `
-      <p class="hint">Assegnato il ${dataIt(c.bonusAss.quando)}: ${c.bonusAss.bonus} punti a chi aveva più di ${c.bonusAss.soglia} presenze, ${Object.keys(c.bonusAss.mappa).length} giocatori premiati. È già dentro la classifica.</p>
-      <button class="btn btn--danger" data-act="bonusvia">Annulla il bonus assegnato</button>
-    ` : `
-      <p class="hint">Si assegna una volta sola, a fine edizione. Finché non lo fai la classifica resta senza bonus.</p>
-      <div class="stepper" style="margin-bottom:10px">
-        <button data-act="cset" data-k="soglia" data-v="-1">−</button><b>${c.soglia}</b>
-        <button data-act="cset" data-k="soglia" data-v="1">+</button><small>presenze minime</small></div>
-      <div class="stepper" style="margin-bottom:14px">
-        <button data-act="cset" data-k="bonus" data-v="-1">−</button><b>${c.bonus}</b>
-        <button data-act="cset" data-k="bonus" data-v="1">+</button><small>punti bonus</small></div>
-      <p class="note">Con questi valori lo prenderebbero ${anteprimaBonus(c)} giocatori${giornateChiuse(c) < giornatePreviste(c) ? `, ma ne mancano ancora ${giornatePreviste(c) - giornateChiuse(c)} di giornate` : ""}.</p>
-      <button class="btn" data-act="bonusdai">Assegna ora il bonus presenze</button>
-    `}
-  </div>
   <div class="block"><h2>Campi del circolo</h2>
     <div class="stepper"><button data-act="set" data-k="campi" data-v="-1">−</button><b>${D.settings.campi}</b>
       <button data-act="set" data-k="campi" data-v="1">+</button><small>valore di partenza</small></div></div>
@@ -855,7 +875,7 @@ function renderSheet(){
     D.champs.forEach(ch => {
       const t = totals(null, ch);
       const r = t[sheet.id]; if(!r || (!r.pts && !r.pres)) return;
-      const bonus = r.pres > ch.soglia ? ch.bonus : 0;
+      const bonus = haBonus(r.pres, ch) ? ch.bonus : 0;
       const pos = classifica(ch).filter(x => x.pres > 0).findIndex(x => x.id === sheet.id) + 1;
       righe.push(`<tr><td>${esc(ch.name)}<br><span class="pt">${pos?`${pos}° posto`:""}</span></td>
         <td class="pts">${r.pts + bonus}</td><td>${r.pres}</td></tr>`);
@@ -1012,6 +1032,16 @@ document.addEventListener("input", e => {
     const v = e.target.value === "" ? null : Math.max(0, Math.min(999, parseInt(e.target.value,10)));
     if(Array.isArray(ev2.punti)) ev2.punti[+e.target.dataset.k] = Number.isNaN(v) ? null : v;
     save();
+  }
+  if((e.target.matches('[data-act="bonuspunti"]') || e.target.matches('[data-act="bonuspres"]')) && canWrite()){
+    const c2 = C();
+    const v = parseInt(e.target.value, 10);
+    const val = Number.isNaN(v) ? 0 : Math.max(0, Math.min(e.target.dataset.act === "bonuspunti" ? 50 : 40, v));
+    if(e.target.dataset.act === "bonuspunti") c2.bonus = val; else c2.soglia = val;
+    save();
+    const list = classifica().filter(r => r.pres > 0);
+    const tab = document.getElementById("tabClass"); if(tab) tab.innerHTML = tabellaClassifica(list);
+    const nota = document.getElementById("bonusNota"); if(nota) nota.textContent = notaBonus(c2, list.filter(r => r.bonus).length);
   }
   if(e.target.matches('[data-act="firma"]') && canWrite()){ D.settings.firma = e.target.value; save(); }
   if(e.target.matches('[data-act="logo"]')) setLogo(e.target.files[0]);
@@ -1195,18 +1225,7 @@ document.addEventListener("click", e => {
     const k = el.dataset.k;
     const lim = k === "soglia" ? [0,40] : k === "settimane" ? [6,12] : k === "base" ? [0,40] : [0,50];
     const base = k === "settimane" ? (c.settimane || 8) : k === "base" ? (c.base || 0) : c[k];
-    if(k !== "settimane" && k !== "base" && c.bonusAss){ toast("Annulla prima il bonus già assegnato"); return; }
     c[k] = Math.max(lim[0], Math.min(lim[1], base + (+el.dataset.v))); save(); render(); return;
-  }
-  if(a === "bonusdai"){
-    if(c.bonusAss){ toast("Il bonus è già stato assegnato"); return; }
-    const quanti = anteprimaBonus(c);
-    if(!confirm(`Assegno ${c.bonus} punti a chi ha più di ${c.soglia} presenze? Riguarda ${quanti} giocatori e si fa una volta sola.`)) return;
-    assegnaBonus(c); save(); render(); toast("Bonus assegnato a " + quanti + " giocatori"); return;
-  }
-  if(a === "bonusvia"){
-    if(!confirm("Tolgo il bonus dalla classifica? Potrai riassegnarlo con valori diversi.")) return;
-    c.bonusAss = null; save(); render(); toast("Bonus annullato"); return;
   }
   if(a === "set"){ D.settings.campi = Math.max(1, Math.min(12, D.settings.campi + (+el.dataset.v))); save(); render(); return; }
   if(a === "export"){ doExport(); return; }
@@ -1399,7 +1418,7 @@ async function drawClassifica(ch){
     x.fillStyle = CL.testo; x.font = "700 28px Archivo, Arial";
     x.fillText("Bonus +" + ch.bonus, 684, Ly - 4);
     x.fillStyle = CL.tenue; x.font = "600 19px Archivo, Arial";
-    x.fillText("oltre le " + ch.soglia + " partite disputate", 684, Ly + 24);
+    x.fillText("dopo " + ch.soglia + " partite disputate", 684, Ly + 24);
 
     x.textAlign = "center"; x.fillStyle = "rgba(255,255,255,.45)";
     x.font = "600 22px Archivo, Arial";
