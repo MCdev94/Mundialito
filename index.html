@@ -113,6 +113,10 @@ button{cursor:pointer;}
   font-variant-numeric:tabular-nums;}
 .pair .nm{flex:1;font-size:15.5px;line-height:1.3;}
 .pair button{border:0;background:transparent;color:var(--ink-soft);font-size:13.5px;padding:4px;}
+.pair--tap{width:100%;text-align:left;cursor:pointer;color:inherit;font:inherit;}
+.pair--fatta{border-color:var(--court);}
+.pair .pp{font-size:15px;font-weight:700;font-stretch:112%;color:var(--court);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.pair .pp--next{font-weight:600;color:var(--ink-soft);font-size:13.5px;}
 .pair .mv{width:38px;height:40px;border:1px solid var(--line);border-radius:10px;font-size:17px;line-height:1;}
 .pair .mv[disabled]{opacity:.3;}
 .ptin{width:66px;height:44px;text-align:center;border:1px solid var(--line);background:var(--field);
@@ -178,8 +182,8 @@ button{cursor:pointer;}
 <body>
 <div class="wrap" id="app"></div>
 <nav class="tabs" id="tabs" aria-label="Sezioni">
-  <button data-tab="serate" aria-current="true">
-    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/><path d="M3 12h3M18 12h3"/></svg>Serate</button>
+  <button data-tab="giornate" aria-current="true">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/><path d="M3 12h3M18 12h3"/></svg>Giornate</button>
   <button data-tab="classifica">
     <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V5M19 20v-7"/></svg>Classifica</button>
   <button data-tab="giocatori">
@@ -195,7 +199,7 @@ const KEY = "mundialito.v2";
 const app = document.getElementById("app");
 const tabsEl = document.getElementById("tabs");
 
-let D = null, tab = "serate", openEvent = null, step = "presenti";
+let D = null, tab = "giornate", openEvent = null, step = "presenti";
 let sel = [], search = "", sheet = null;
 
 const uid = () => Math.random().toString(36).slice(2,9);
@@ -261,13 +265,40 @@ function placements(ev){
   return ordineDaTabellone(ev);
 }
 /* base: 4 punti per campo in gioco -> 3 campi 12, 4 campi 16, 5 campi 20 */
-function baseSerata(ev){
+function baseGiornata(ev){
   const campi = (ev.matches && ev.matches.length) || Math.ceil(ev.pairs.length / 2);
   return 4 * Math.max(1, campi);
 }
-function puntiDefault(ev, k){
-  const m = ev.mult || 1;
-  return Math.max(2 * m, (baseSerata(ev) - 2 * k) * m);
+function numCampi(ev){ return (ev.matches && ev.matches.length) || Math.ceil(ev.pairs.length / 2); }
+function puntiDefault(ev, k){ return Math.max(2, baseGiornata(ev) - 2 * k); }
+
+/* chiude la giornata: scrive i punti nella classifica e la toglie dall'elenco */
+function chiudiGiornata(ev){
+  const c = C(), delta = {};
+  ev.ordine.forEach((pi, k) => {
+    const pts = puntiDefault(ev, k);
+    ev.pairs[pi].forEach(id => delta[id] = pts);
+  });
+  Object.keys(delta).forEach(id => {
+    const v = c.carry[id] || {pts:0, pres:0};
+    c.carry[id] = {pts:(v.pts || 0) + delta[id], pres:(v.pres || 0) + 1};
+  });
+  c.base = (c.base || 0) + 1;
+  c.ultima = {nome:ev.name, data:ev.date, quando:Date.now(), delta, ev:JSON.parse(JSON.stringify(ev))};
+  c.events = c.events.filter(e => e.id !== ev.id);
+  return Object.keys(delta).length;
+}
+function annullaUltima(){
+  const c = C(), u = c.ultima; if(!u) return false;
+  Object.keys(u.delta).forEach(id => {
+    const v = c.carry[id]; if(!v) return;
+    v.pts = Math.max(0, (v.pts || 0) - u.delta[id]);
+    v.pres = Math.max(0, (v.pres || 0) - 1);
+  });
+  c.base = Math.max(0, (c.base || 0) - 1);
+  if(u.ev){ const e = u.ev; e.status = "bozza"; c.events.push(e); }
+  c.ultima = null;
+  return u.ev ? u.ev.id : null;
 }
 /* i punti stanno sulla posizione, non sulla coppia: il 1° posto vale sempre uguale */
 function initPunti(ev){
@@ -399,7 +430,7 @@ function autoPairs(ev, modo){
 function render(){
   tabsEl.querySelectorAll("button").forEach(b => b.setAttribute("aria-current", String(b.dataset.tab === tab)));
   if(openEvent) renderEvento();
-  else if(tab === "serate") renderSerate();
+  else if(tab === "giornate") renderGiornate();
   else if(tab === "classifica") renderClassifica();
   else if(tab === "giocatori") renderGiocatori();
   else renderAltro();
@@ -407,29 +438,36 @@ function render(){
 }
 function champBtn(){
   const c = C();
-  return `<button class="champsel" data-act="champs"><span class="${dotCls(c.type)}"></span>${esc(c.name)} · ${esc(c.ed)} ▾</button>`;
+  return `<button class="champsel" data-act="champs"><span class="${dotCls(c.type)}"></span>${esc(c.name)} ▾</button>`;
 }
 
-/* --- serate --- */
-function renderSerate(){
+/* --- giornate --- */
+function renderGiornate(){
   const c = C(), list = ordered().reverse();
+  const u = c.ultima;
   app.innerHTML = `
   <header class="top">${champBtn()}
     <div class="top__row"><div>
-      <h1 class="top__title">Serate</h1>
-      <p class="top__meta">${c.events.length} in archivio · ${tipoLabel(c.type).toLowerCase()}</p>
+      <h1 class="top__title">Giornate</h1>
+      <p class="top__meta">${giornateChiuse(c)} giocate${list.length ? " · " + list.length + " in corso" : ""}</p>
     </div></div></header>
-  ${canWrite() ? `<button class="btn" data-act="newev">Nuova serata</button>`
-    : `<p class="empty">Stai guardando in sola lettura. Per gestire le serate entra da Altro → Accedi come gestore.</p>`}
+  ${canWrite() ? `<button class="btn" data-act="newev">Nuova giornata</button>`
+    : `<p class="empty">Stai guardando in sola lettura. Per gestire le giornate entra da Altro → Accedi come gestore.</p>`}
   <div class="block">
   ${list.length ? list.map(e => `
     <button class="card card--tap" data-act="openev" data-id="${e.id}">
       <div class="card__row"><span class="card__t">${esc(e.name)}</span>
-        <span><span class="badge ${e.status==="chiuso"?"":"badge--soft"}">${e.status==="chiuso"?"chiusa":"aperta"}</span></span></div>
+        <span class="badge badge--soft">${e.finale ? (e.status === "chiuso" ? "conclusa" : "finale") : "in corso"}</span></div>
       <p class="card__s">${dataIt(e.date)} · ${e.finale ? "finale a 8" : e.pairs.length + " copp" + (e.pairs.length===1?"ia":"ie")}</p>
     </button>`).join("")
-  : `<p class="empty">Nessuna serata in questo campionato.</p>`}
-  </div>`;
+  : `<p class="empty">Nessuna giornata in corso. Quelle chiuse spariscono da qui: i loro punti sono già in classifica.</p>`}
+  </div>
+  ${u && canWrite() ? `<div class="block"><h2>Ultima chiusa</h2>
+    <div class="card"><div class="card__row"><span class="card__t">${esc(u.nome)}</span>
+      <span class="card__s">${dataIt(u.data)}</span></div>
+      <p class="card__s">Punti già entrati in classifica. Se hai sbagliato l'ordine, puoi toglierli e riaprirla.</p>
+      <button class="btn btn--quiet" data-act="annullaultima" style="margin-top:10px">Togli i punti e riapri</button>
+    </div></div>` : ""}`;
 }
 
 /* --- evento --- */
@@ -477,7 +515,6 @@ function renderEvento(){
     <div class="row2">
       <button class="btn btn--ghost btn--sm" data-act="auto" data-m="bil">Bilanciate</button>
       <button class="btn btn--ghost btn--sm" data-act="auto" data-m="liv">Per livello</button>
-      <button class="btn btn--ghost btn--sm" data-act="auto" data-m="cas">A caso</button>
     </div>
     ${ev.pairs.length?`<div class="block">${ev.pairs.map((pr,i)=>`
       <div class="pair"><span class="seed">${(t[pr[0]]?t[pr[0]].pts:0)+(t[pr[1]]?t[pr[1]].pts:0)}</span>
@@ -496,68 +533,80 @@ function renderEvento(){
 
   if(step === "tabellone"){
     const turno = (ev.storico || []).length + 1;
-    const fin = !!ev.finale;
-    body = `<div class="block"><h2>${fin ? (turno === 1 ? "Semifinali" : "Finale") : (turno === 1 ? "Ingresso in campo" : turno + "° turno")}</h2>
-    <p class="hint">${fin
-      ? (turno === 1 ? "I primi 8 della classifica, accoppiati primo con ottavo e così via. Tocca chi passa."
-                     : "Le due vincenti si giocano il titolo, le due perdenti il terzo posto.")
-      : (turno === 1 ? "Coppie ordinate per somma punti. Finita la partita, tocca chi ha vinto."
-                     : "Chi ha vinto è salito di un campo, chi ha perso è sceso. Tocca di nuovo i vincitori.")}</p>
-    ${ev.matches.map((m,i) => matchCard(ev,m,i)).join("")}</div>
-    <div class="block">
-      ${fin && turno >= 2
-        ? `<button class="btn" data-act="close" ${evReady(ev)?"":"disabled"}>Proclama i campioni</button>`
-        : `<button class="btn" data-act="turno" ${evReady(ev)?"":"disabled"}>${fin ? "Vai alla finale" : "Turno successivo: chi vince sale"}</button>`}
-      ${!fin ? `<button class="btn btn--ghost" data-act="vaipunti" ${evReady(ev)?"":"disabled"}>Finita la serata: vai ai punti</button>` : ""}
-      ${!evReady(ev)?`<p class="note">Segna il vincitore di ogni campo.</p>`:""}
-      <button class="btn btn--quiet" data-act="loca">Crea la locandina di questo turno</button>
-      ${turno > 1 ? `<button class="btn btn--quiet" data-act="indietro">Annulla l'ultimo turno</button>` : ""}
-      <button class="btn btn--quiet" data-act="step" data-v="coppie">Modifica le coppie</button>
-    </div>`;
+    if(ev.finale){
+      body = `<div class="block"><h2>${turno === 1 ? "Semifinali" : "Finale"}</h2>
+      <p class="hint">${turno === 1 ? "I primi 8 della classifica, accoppiati primo con ottavo e così via. Tocca chi passa."
+                                    : "Le due vincenti si giocano il titolo, le due perdenti il terzo posto."}</p>
+      ${ev.matches.map((m,i) => matchCard(ev,m,i,true)).join("")}</div>
+      <div class="block">
+        ${turno >= 2
+          ? `<button class="btn" data-act="close" ${evReady(ev)?"":"disabled"}>Proclama i campioni</button>`
+          : `<button class="btn" data-act="turno" ${evReady(ev)?"":"disabled"}>Vai alla finale</button>`}
+        ${!evReady(ev)?`<p class="note">Segna il vincitore di ogni campo.</p>`:""}
+        <button class="btn btn--quiet" data-act="loca">Crea la locandina</button>
+        ${turno > 1 ? `<button class="btn btn--quiet" data-act="indietro">Torna alle semifinali</button>` : ""}
+      </div>`;
+    } else {
+      body = `<div class="block"><h2>Tabellone</h2>
+      <p class="hint">Coppie ordinate per somma punti, a due a due sui campi. Si gioca, e a fine giornata si passa al punteggio.</p>
+      ${ev.matches.map((m,i) => matchCard(ev,m,i,false)).join("")}</div>
+      <div class="block">
+        <button class="btn" data-act="vaipunteggio">Vai al punteggio</button>
+        <button class="btn btn--ghost" data-act="loca">Crea la locandina</button>
+        <button class="btn btn--quiet" data-act="step" data-v="coppie">Modifica le coppie</button>
+      </div>`;
+    }
   }
 
-  if(step === "punti"){
-    initPunti(ev);
-    const campi = (ev.matches && ev.matches.length) || 0;
-    body = `<div class="block"><h2>Punti della serata</h2>
-    <p class="hint">Posizione finale dopo ${(ev.storico||[]).length+1} turni. ${campi} camp${campi===1?"o":"i"}: ${baseSerata(ev)} punti alla prima coppia e poi a scalare di 2. Puoi spostare le coppie o correggere i numeri a mano.</p>
-    ${ev.ordine.map((pi,k) => `
-      <div class="pair">
+  if(step === "punteggio"){
+    ev.ordine = (ev.ordine || []).filter(i => ev.pairs[i]);
+    const messi = new Set(ev.ordine);
+    const liberi = ev.pairs.map((_,i) => i).filter(i => !messi.has(i));
+    const prossimo = ev.ordine.length + 1;
+    body = `<div class="block"><h2>Ordine di arrivo</h2>
+    <p class="hint">Tocca le coppie dalla prima classificata all'ultima. ${numCampi(ev)} camp${numCampi(ev)===1?"o":"i"}: ${baseGiornata(ev)} punti alla prima, poi 2 in meno per ogni posizione. Per togliere una coppia dall'ordine toccala di nuovo.</p>
+    ${ev.ordine.length ? ev.ordine.map((pi,k) => `
+      <button class="pair pair--tap pair--fatta" data-act="togli" data-k="${k}">
         <span class="seed">${k+1}°</span>
         <span class="nm">${esc(nm(ev.pairs[pi][0]))}<br>${esc(nm(ev.pairs[pi][1]))}</span>
-        <button class="mv" data-act="su" data-k="${k}" ${k?"":"disabled"} aria-label="Sposta su">↑</button>
-        <button class="mv" data-act="giu" data-k="${k}" ${k<ev.ordine.length-1?"":"disabled"} aria-label="Sposta giù">↓</button>
-        <input class="ptin" type="number" inputmode="numeric" min="0" max="999"
-               data-act="pt" data-k="${k}" value="${ev.punti[k]}" aria-label="Punti">
-      </div>`).join("")}
+        <span class="pp">${puntiDefault(ev,k)} pt</span>
+      </button>`).join("") : `<p class="empty">Comincia toccando la coppia arrivata prima.</p>`}
     </div>
+    ${liberi.length ? `<div class="block"><h2>Da piazzare</h2>
+      ${liberi.map(pi => `
+        <button class="pair pair--tap" data-act="piazza" data-pi="${pi}">
+          <span class="seed">+</span>
+          <span class="nm">${esc(nm(ev.pairs[pi][0]))}<br>${esc(nm(ev.pairs[pi][1]))}</span>
+          <span class="pp pp--next">diventa ${prossimo}°</span>
+        </button>`).join("")}</div>` : ""}
     <div class="block">
-      <button class="btn" data-act="close">Chiudi la serata e aggiorna la classifica</button>
-      <button class="btn btn--quiet" data-act="ricalcola">Ricalcola in automatico</button>
+      <button class="btn" data-act="assegna" ${liberi.length || !ev.ordine.length ? "disabled" : ""}>Assegna i punti e chiudi la giornata</button>
+      ${liberi.length ? `<p class="note">Manca${liberi.length===1?"":"no"} ${liberi.length} copp${liberi.length===1?"ia":"ie"} da piazzare.</p>` : ""}
+      ${ev.ordine.length ? `<button class="btn btn--quiet" data-act="ricomincia">Ricomincia l'ordine</button>` : ""}
       <button class="btn btn--quiet" data-act="step" data-v="tabellone">Torna al tabellone</button>
     </div>`;
   }
 
   app.innerHTML = `
-  <header class="top"><button class="back" data-act="home">← Serate</button>
+  <header class="top"><button class="back" data-act="home">← Giornate</button>
     <div class="top__row"><div><h1 class="top__title">${esc(ev.name)}</h1>
       <p class="top__meta">${dataIt(ev.date)} · ${ev.campi} camp${ev.campi===1?"o":"i"}</p></div>
       <button class="badge badge--soft" data-act="editev">Modifica</button></div>
   </header>${body}`;
 }
 
-function matchCard(ev,m,i){
+function matchCard(ev,m,i,cliccabile){
   const A = ev.pairs[m.pa], B = (m.pb===null||m.pb===undefined) ? null : ev.pairs[m.pb];
   const sA = ev.seeds ? ev.seeds[m.pa] : 0, sB = B && ev.seeds ? ev.seeds[m.pb] : 0;
   const pos = 2*i+1;
   return `<article class="match">
     <div class="match__head"><span class="match__n">${campoLabel(ev,i)}</span>
-      <span class="match__p">${B?`${pos}° e ${pos+1}° posto`:`${pos}° posto`}</span></div>
-    <button class="side ${m.winner==="a"?"side--win":""}" data-act="win" data-i="${i}" data-s="a">
-      <span class="nm">${esc(nm(A[0]))} · ${esc(nm(A[1]))}</span><span class="seed">${sA}</span></button>
+      <span class="match__p">${ev.finale ? "" : (B ? "coppie " + pos + " e " + (pos+1) : "riposo")}</span></div>
+    <${cliccabile?"button":"div"} class="side ${cliccabile && m.winner==="a"?"side--win":""}" ${cliccabile?`data-act="win" data-i="${i}" data-s="a"`:""}>
+      <span class="nm">${esc(nm(A[0]))} · ${esc(nm(A[1]))}</span><span class="seed">${sA}</span></${cliccabile?"button":"div"}>
     ${B?`<div class="net"></div>
-    <button class="side ${m.winner==="b"?"side--win":""}" data-act="win" data-i="${i}" data-s="b">
-      <span class="nm">${esc(nm(B[0]))} · ${esc(nm(B[1]))}</span><span class="seed">${sB}</span></button>`
+    <${cliccabile?"button":"div"} class="side ${cliccabile && m.winner==="b"?"side--win":""}" ${cliccabile?`data-act="win" data-i="${i}" data-s="b"`:""}>
+      <span class="nm">${esc(nm(B[0]))} · ${esc(nm(B[1]))}</span><span class="seed">${sB}</span></${cliccabile?"button":"div"}>`
     :`<div class="net"></div><div class="side"><span class="nm" style="color:var(--ink-soft)">riposo</span></div>`}
   </article>`;
 }
@@ -567,9 +616,9 @@ function renderEventoChiuso(ev){
   if(ev.finale){
     const podio = ["Campioni", "Finalisti", "Terzo posto", "Quarto posto"];
     return app.innerHTML = `
-    <header class="top"><button class="back" data-act="home">← Serate</button>
+    <header class="top"><button class="back" data-act="home">← Giornate</button>
       <div class="top__row"><div><h1 class="top__title">${esc(ev.name)}</h1>
-        <p class="top__meta">${dataIt(ev.date)} · ${esc(C().name)} ${esc(C().ed)}</p></div>
+        <p class="top__meta">${dataIt(ev.date)} · ${esc(C().name)}</p></div>
         <span class="badge">chiusa</span></div></header>
     <table class="table"><thead><tr><th>Posizione</th><th></th></tr></thead><tbody>
       ${pl.map((pi,k) => { const pr = ev.pairs[pi];
@@ -584,7 +633,7 @@ function renderEventoChiuso(ev){
     </div>`;
   }
   app.innerHTML = `
-  <header class="top"><button class="back" data-act="home">← Serate</button>
+  <header class="top"><button class="back" data-act="home">← Giornate</button>
     <div class="top__row"><div><h1 class="top__title">${esc(ev.name)}</h1>
       <p class="top__meta">${dataIt(ev.date)} · ${ev.pairs.length} coppie · ${(ev.storico||[]).length+1} turni</p></div>
       <span class="badge">chiusa</span></div></header>
@@ -599,7 +648,7 @@ function renderEventoChiuso(ev){
     <button class="btn btn--ghost" data-act="shareev">Copia il risultato</button>
     <button class="btn btn--quiet" data-act="correggi">Correggi ordine e punti</button>
     <button class="btn btn--quiet" data-act="reopen">Riapri il tabellone</button>
-    <button class="btn btn--danger" data-act="delev">Elimina la serata</button>
+    <button class="btn btn--danger" data-act="delev">Elimina la giornata</button>
   </div>`;
 }
 
@@ -624,7 +673,7 @@ function renderClassifica(){
     if(list.length < 8) return `<p class="note">Servono almeno 8 giocatori con presenze per creare la finale.</p>`;
     return `<button class="btn btn--quiet" data-act="finale8">Crea la finale a 8</button>`;
   })()}`
-  :`<p class="empty">Ancora nessuna serata chiusa qui.</p>`}`;
+  :`<p class="empty">Ancora nessuna giornata chiusa qui.</p>`}`;
 }
 
 /* --- giocatori --- */
@@ -658,8 +707,7 @@ function renderAltro(){
     <div class="top__row"><h1 class="top__title">Impostazioni</h1></div></header>
   <div class="block"><h2>Questo campionato</h2>
     <label class="fld"><span>Nome</span><input value="${esc(c.name)}" data-act="cname"></label>
-    <label class="fld"><span>Edizione</span><input value="${esc(c.ed)}" data-act="ced"></label>
-    <p class="hint">Tipo: ${tipoLabel(c.type)} — non si cambia dopo le prime serate.</p>
+    <p class="hint">Tipo: ${tipoLabel(c.type)} — non si cambia dopo le prime giornate.</p>
     <h2 style="margin-top:18px">Durata dell'edizione</h2>
     <div class="stepper">
       <button data-act="cset" data-k="settimane" data-v="-1">−</button><b>${c.settimane || 8}</b>
@@ -698,7 +746,7 @@ function renderAltro(){
     <button class="btn btn--quiet" data-act="sync">Sincronizza adesso</button>
   </div>
   <div class="block"><h2>Locandina</h2>
-    <p class="hint">Logo e scritta usati nell'immagine della serata.</p>
+    <p class="hint">Logo e scritta usati nell'immagine della giornata.</p>
     <label class="btn btn--quiet" style="cursor:pointer">${D.settings.logo?"Cambia il logo":"Carica il logo"}
       <input type="file" accept="image/*" data-act="logo" style="display:none"></label>
     ${D.settings.logo?`<button class="btn btn--quiet" data-act="dellogo">Togli il logo</button>`:""}
@@ -727,7 +775,7 @@ function renderSheet(){
       ${D.champs.map(c => `<button class="card card--tap" data-act="setchamp" data-id="${c.id}">
         <div class="card__row"><span class="card__t"><span class="${dotCls(c.type)}" style="display:inline-block;margin-right:8px"></span>${esc(c.name)}</span>
         ${c.id===D.cur?'<span class="badge">attivo</span>':''}</div>
-        <p class="card__s">${esc(c.ed)} · ${c.events.length} serate · ${tipoLabel(c.type).toLowerCase()}</p></button>`).join("")}
+        <p class="card__s">${tipoLabel(c.type)} · ${giornateChiuse(c)} giornate giocate</p></button>`).join("")}
       <div class="block"><button class="btn btn--ghost" data-act="newchamp">Crea un campionato</button>
       <button class="btn btn--quiet" data-act="closesheet">Chiudi</button></div>`;
   }
@@ -736,7 +784,6 @@ function renderSheet(){
     const t = sheet.tmp;
     inner = `<h3>Nuovo campionato</h3>
       <label class="fld"><span>Nome</span><input id="ch_name" value="${esc(t.name)}" placeholder="Mundialito maschile"></label>
-      <label class="fld"><span>Edizione</span><input id="ch_ed" value="${esc(t.ed)}" placeholder="3ª edizione"></label>
       <div class="block" style="margin-top:0"><h2>Tipo</h2><div class="chips">
         ${["maschile","femminile","misto"].map(x=>`<button class="chip" data-act="chtype" data-v="${x}" aria-pressed="${t.type===x}">${tipoLabel(x)}</button>`).join("")}
       </div></div>
@@ -760,7 +807,7 @@ function renderSheet(){
       const r = t[sheet.id]; if(!r || (!r.pts && !r.pres)) return;
       const bonus = r.pres > ch.soglia ? ch.bonus : 0;
       const pos = classifica(ch).filter(x => x.pres > 0).findIndex(x => x.id === sheet.id) + 1;
-      righe.push(`<tr><td>${esc(ch.name)}<br><span class="pt">${esc(ch.ed)}${pos?` · ${pos}° posto`:""}</span></td>
+      righe.push(`<tr><td>${esc(ch.name)}<br><span class="pt">${pos?`${pos}° posto`:""}</span></td>
         <td class="pts">${r.pts + bonus}</td><td>${r.pres}</td></tr>`);
     });
     const sto = ordered().filter(e => e.status === "chiuso" && e.pairs.flat().includes(sheet.id)).reverse()
@@ -772,7 +819,7 @@ function renderSheet(){
     inner = `<h3>${esc(p.name)}</h3><p class="hint">${p.sex === "F" ? "Donna" : "Uomo"}</p>
       ${righe.length?`<table class="table"><thead><tr><th>Campionato</th><th>Punti</th><th>Pres.</th></tr></thead>
         <tbody>${righe.join("")}</tbody></table>`:`<p class="empty">Nessuna presenza registrata.</p>`}
-      ${sto.length?`<div class="block"><h2>Serate in ${esc(C().name)}</h2>
+      ${sto.length?`<div class="block"><h2>Giornate in ${esc(C().name)}</h2>
         <table class="table"><tbody>${sto.join("")}</tbody></table></div>`:""}
       <div class="block"><h2>Correzioni</h2>
         <button class="btn btn--quiet" data-act="rename" data-id="${sheet.id}">Cambia nome</button>
@@ -787,7 +834,7 @@ function renderSheet(){
 
   if(sheet.tipo === "login"){
     inner = `<h3>Accesso gestore</h3>
-      <p class="hint">Serve solo a chi gestisce le serate. Si fa una volta sola: la sessione resta su questo dispositivo.</p>
+      <p class="hint">Serve solo a chi gestisce le giornate. Si fa una volta sola: la sessione resta su questo dispositivo.</p>
       <form data-act="dologin">
         <label class="fld"><span>Mail</span><input id="lg_mail" type="email" autocomplete="username" inputmode="email"></label>
         <label class="fld"><span>Password</span><input id="lg_pwd" type="password" autocomplete="current-password"></label>
@@ -799,6 +846,8 @@ function renderSheet(){
   if(sheet.tipo === "classifica"){
     inner = `<h3>Classifica da condividere</h3>
       <p class="hint">Una pagina ogni 20-26 giocatori. Immagini per WhatsApp o PDF da stampare.</p>
+      <label class="fld" style="margin-bottom:10px"><span>Edizione da stampare</span>
+        <input data-act="edizione" inputmode="numeric" value="${esc(edizioneDi(C()))}" placeholder="es. 2" style="max-width:120px"></label>
       <div id="locaWrap" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;
         padding:8px;min-height:140px;display:grid;gap:8px;place-items:center;color:var(--ink-soft);font-size:14px">Preparo le immagini…</div>
       <div class="block">
@@ -812,6 +861,8 @@ function renderSheet(){
   if(sheet.tipo === "locandina"){
     inner = `<h3>Locandina</h3>
       <p class="hint">Immagine pronta per WhatsApp, o PDF da stampare.</p>
+      <label class="fld" style="margin-bottom:10px"><span>Edizione da stampare</span>
+        <input data-act="edizione" inputmode="numeric" value="${esc(edizioneDi(C()))}" placeholder="es. 2" style="max-width:120px"></label>
       <div id="locaWrap" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;
         padding:8px;min-height:140px;display:grid;place-items:center;color:var(--ink-soft);font-size:14px">Preparo l'immagine…</div>
       <div class="block">
@@ -825,16 +876,16 @@ function renderSheet(){
   if(sheet.tipo === "event"){
     const ev = sheet.id ? EV(sheet.id) : null;
     const v = ev || {name:"", date:oggi(), ora:""};
-    inner = `<h3>${ev?"Modifica serata":"Nuova serata"}</h3>
-      <label class="fld"><span>Nome</span><input id="ev_name" value="${esc(v.name)}" placeholder="8ª giornata"></label>
+    inner = `<h3>${ev?"Modifica giornata":"Nuova giornata"}</h3>
+      <label class="fld"><span>Nome</span><input id="ev_name" value="${esc(v.name)}" placeholder="${giornateChiuse()+1}ª giornata"></label>
       <div class="row2"><label class="fld" style="flex:2"><span>Data</span><input id="ev_date" type="date" value="${v.date}"></label>
         <label class="fld" style="flex:1"><span>Ora</span><input id="ev_ora" value="${esc(v.ora||"")}" placeholder="11:30"></label></div>
       <div class="block" style="margin-top:0"><h2>Campi</h2><div class="stepper">
         <button data-act="evcampi" data-v="-1">−</button><b id="ev_campi">${sheet.tmp.campi}</b>
         <button data-act="evcampi" data-v="1">+</button></div></div>
-      <div class="block"><button class="btn" data-act="saveev">${ev?"Salva":"Crea la serata"}</button>
+      <div class="block"><button class="btn" data-act="saveev">${ev?"Salva":"Crea la giornata"}</button>
         <button class="btn btn--quiet" data-act="closesheet">Annulla</button>
-        ${ev?`<button class="btn btn--danger" data-act="delev">Elimina la serata</button>`:""}</div>`;
+        ${ev?`<button class="btn btn--danger" data-act="delev">Elimina la giornata</button>`:""}</div>`;
   }
 
   const d = document.createElement("div");
@@ -843,7 +894,7 @@ function renderSheet(){
   document.body.appendChild(d);
   if(sheet.tipo === "login"){
     inner = `<h3>Accesso gestore</h3>
-      <p class="hint">Serve solo a chi gestisce le serate. Si fa una volta sola: la sessione resta su questo dispositivo.</p>
+      <p class="hint">Serve solo a chi gestisce le giornate. Si fa una volta sola: la sessione resta su questo dispositivo.</p>
       <form data-act="dologin">
         <label class="fld"><span>Mail</span><input id="lg_mail" type="email" autocomplete="username" inputmode="email"></label>
         <label class="fld"><span>Password</span><input id="lg_pwd" type="password" autocomplete="current-password"></label>
@@ -852,16 +903,18 @@ function renderSheet(){
       <div class="block"><button class="btn btn--quiet" data-act="closesheet">Annulla</button></div>`;
   }
 
-  if(sheet.tipo === "locandina" || sheet.tipo === "classifica"){
-    const w = d.querySelector("#locaWrap");
-    const lavoro = sheet.tipo === "locandina"
-      ? drawLocandina(EV(sheet.id)).then(cv => [cv])
-      : drawClassifica(C());
-    lavoro.then(pagine => {
-      LOCA = pagine; w.innerHTML = "";
-      pagine.forEach(cv => { cv.style.width = "100%"; cv.style.height = "auto"; cv.style.display = "block"; w.appendChild(cv); });
-    }).catch(e => { w.textContent = "Non riesco a disegnarla: " + ((e && e.message) || ""); });
-  }
+  if(sheet.tipo === "locandina" || sheet.tipo === "classifica") disegnaFoglio();
+}
+function disegnaFoglio(){
+  const w = document.querySelector("#locaWrap");
+  if(!w || !sheet) return;
+  const lavoro = sheet.tipo === "locandina"
+    ? drawLocandina(EV(sheet.id)).then(cv => [cv])
+    : drawClassifica(C());
+  lavoro.then(pagine => {
+    LOCA = pagine; w.innerHTML = "";
+    pagine.forEach(cv => { cv.style.width = "100%"; cv.style.height = "auto"; cv.style.display = "block"; w.appendChild(cv); });
+  }).catch(e => { w.textContent = "Non riesco a disegnarla: " + ((e && e.message) || ""); });
 }
 
 /* ============================ AZIONI ============================ */
@@ -899,7 +952,12 @@ document.addEventListener("input", e => {
     const n = document.getElementById("q"); if(n){ n.focus(); n.setSelectionRange(pos,pos); }
   }
   if(e.target.matches('[data-act="cname"]') && canWrite()){ C().name = e.target.value; save(); }
-  if(e.target.matches('[data-act="ced"]') && canWrite()){ C().ed = e.target.value; save(); }
+  if(e.target.matches('[data-act="edizione"]')){
+    D.settings.edizioni = D.settings.edizioni || {};
+    D.settings.edizioni[C().id] = e.target.value.trim();
+    if(canWrite()) save(); else salvaLocale();
+    clearTimeout(window._tEd); window._tEd = setTimeout(disegnaFoglio, 350);
+  }
   if(e.target.matches('[data-act="pt"]') && canWrite()){
     const ev2 = EV(openEvent); if(!ev2) return;
     const v = e.target.value === "" ? null : Math.max(0, Math.min(999, parseInt(e.target.value,10)));
@@ -923,7 +981,7 @@ document.addEventListener("click", e => {
 
   /* campionati */
   if(a === "champs"){ sheet = {tipo:"champs"}; render(); return; }
-  if(a === "setchamp"){ D.cur = el.dataset.id; sheet = null; openEvent = null; tab = "serate"; search = ""; save(); render(); return; }
+  if(a === "setchamp"){ D.cur = el.dataset.id; sheet = null; openEvent = null; tab = "giornate"; search = ""; save(); render(); return; }
   if(a === "newchamp"){ sheet = {tipo:"newchamp", tmp:{name:"", ed:"", type:"maschile", soglia:8, bonus:5, settimane:8}}; render(); return; }
   if(a === "chtype"){ sheet.tmp.type = el.dataset.v; render(); return; }
   if(a === "chset"){
@@ -933,23 +991,26 @@ document.addEventListener("click", e => {
   }
   if(a === "savechamp"){
     const name = (document.getElementById("ch_name").value || "").trim() || "Mundialito " + tipoLabel(sheet.tmp.type).toLowerCase();
-    const ed = (document.getElementById("ch_ed").value || "").trim() || "1ª edizione";
+    const ed = "";
     const id = uid();
     D.champs.push({id, name, ed, type:sheet.tmp.type, soglia:sheet.tmp.soglia, bonus:sheet.tmp.bonus,
       settimane:sheet.tmp.settimane || 8, base:0, carry:{}, bonusAss:null, events:[]});
-    D.cur = id; sheet = null; tab = "serate"; save(); render(); toast("Campionato creato"); return;
+    D.cur = id; sheet = null; tab = "giornate"; save(); render(); toast("Campionato creato"); return;
   }
 
-  /* serate */
+  /* giornate */
   if(a === "newev"){ sheet = {tipo:"event", id:null, tmp:{mult:1, campi:D.settings.campi}}; render(); return; }
   if(a === "editev"){ sheet = {tipo:"event", id:openEvent, tmp:{mult:ev.mult, campi:ev.campi}}; render(); return; }
   if(a === "openev"){ openEvent = el.dataset.id; const x = EV(openEvent);
-    step = x.matches && x.matches.length ? "tabellone" : (x.pairs.length ? "coppie" : "presenti");
+    step = x.finale ? "tabellone"
+      : (x.ordine && x.ordine.length) ? "punteggio"
+      : (x.matches && x.matches.length) ? "tabellone"
+      : x.pairs.length ? "coppie" : "presenti";
     sel = []; search = ""; render(); return; }
   if(a === "evcampi"){ sheet.tmp.campi = Math.max(1, Math.min(12, sheet.tmp.campi + (+el.dataset.v)));
     document.getElementById("ev_campi").textContent = sheet.tmp.campi; return; }
   if(a === "saveev"){
-    const name = (document.getElementById("ev_name").value || "").trim() || "Serata del " + dataIt(oggi());
+    const name = (document.getElementById("ev_name").value || "").trim() || "Giornata del " + dataIt(oggi());
     const date = document.getElementById("ev_date").value || oggi();
     const ora = (document.getElementById("ev_ora").value || "").trim();
     if(sheet.id) Object.assign(EV(sheet.id), {name, date, ora, mult:sheet.tmp.mult, campi:sheet.tmp.campi});
@@ -963,7 +1024,7 @@ document.addEventListener("click", e => {
   }
   if(a === "delev"){
     const id = (sheet && sheet.id) ? sheet.id : openEvent;
-    if(confirm("Elimino questa serata e i suoi punti?")){
+    if(confirm("Elimino questa giornata e i suoi punti?")){
       c.events = c.events.filter(x => x.id !== id); sheet = null; openEvent = null; save(); render();
     } return;
   }
@@ -1031,7 +1092,28 @@ document.addEventListener("click", e => {
     ev.ordine = null; ev.punti = null;
     save(); render(); return;
   }
-  if(a === "vaipunti"){ initPunti(ev); step = "punti"; save(); render(); return; }
+  if(a === "vaipunteggio"){ ev.ordine = ev.ordine || []; step = "punteggio"; save(); render(); return; }
+  if(a === "piazza"){
+    ev.ordine = ev.ordine || [];
+    const pi = +el.dataset.pi; if(!ev.ordine.includes(pi)) ev.ordine.push(pi);
+    save(); render(); return;
+  }
+  if(a === "togli"){ ev.ordine.splice(+el.dataset.k, 1); save(); render(); return; }
+  if(a === "ricomincia"){ ev.ordine = []; save(); render(); return; }
+  if(a === "assegna"){
+    const nGioc = ev.ordine.length * 2;
+    if(!confirm(`Assegno i punti di "${ev.name}" a ${nGioc} giocatori e chiudo la giornata? La classifica si aggiorna e la giornata sparisce dall'elenco.`)) return;
+    const n = chiudiGiornata(ev);
+    openEvent = null; tab = "giornate"; save(); render();
+    toast("Classifica aggiornata per " + n + " giocatori"); return;
+  }
+  if(a === "annullaultima"){
+    const u = c.ultima; if(!u) return;
+    if(!confirm(`Tolgo dalla classifica i punti di "${u.nome}" e la riapro per correggere l'ordine?`)) return;
+    const id = annullaUltima();
+    if(id){ openEvent = id; step = "punteggio"; }
+    save(); render(); toast("Punti tolti, giornata riaperta"); return;
+  }
   if(a === "su" || a === "giu"){
     const k = +el.dataset.k, j = a === "su" ? k-1 : k+1;
     if(j < 0 || j >= ev.ordine.length) return;
@@ -1116,7 +1198,13 @@ const CL = {
   sfondoA:"#143B70", sfondoB:"#050E20", riga:"#17477A", verde:"#0C5B45",
   verdeChiaro:"#2BC79A", testo:"#FFFFFF", tenue:"#9FB6D4", rosso:"#5A1726", oro:"#C7B079"
 };
-function edNum(ch){ const m = (ch.ed || "").match(/\d+/); return m ? m[0] : ""; }
+function edizioneDi(ch){
+  ch = ch || C();
+  const salvata = D.settings.edizioni && D.settings.edizioni[ch.id];
+  if(salvata !== undefined && salvata !== null) return String(salvata);
+  const m = (ch.ed || "").match(/\d+/); return m ? m[0] : "";
+}
+function edNum(ch){ return edizioneDi(ch); }
 
 function rigaClass(x, X, Y, W, H, dati, verde){
   rrect(x, X, Y, W, H, H/2.4);
@@ -1299,7 +1387,7 @@ function rowsOf(st){
   st.players.forEach(p => out.players.push({id:p.id, name:p.name, sex:p.sex || "M", archived:!!p.archived}));
   st.champs.forEach((c,i) => out.champs.push({id:c.id, name:c.name, ed:c.ed || "", type:c.type,
     soglia:c.soglia, bonus:c.bonus, settimane:c.settimane || 8, giornate_base:c.base || 0,
-    bonus_ass:c.bonusAss || null, carry:c.carry || {}, ordine:i}));
+    bonus_ass:c.bonusAss || null, ultima:c.ultima || null, carry:c.carry || {}, ordine:i}));
   st.champs.forEach(c => (c.events || []).forEach(e => out.events.push({
     id:e.id, champ_id:c.id, name:e.name, data:e.date || null, ora:e.ora || null,
     mult:e.mult || 1, campi:e.campi || 5, status:e.status || "bozza", finale:!!e.finale,
@@ -1314,7 +1402,7 @@ function stateFromRows(r){
   d.players = r.players.map(p => ({id:p.id, name:p.name, sex:p.sex || "M", archived:!!p.archived}));
   d.champs = [...r.champs].sort((a,b) => (a.ordine || 0) - (b.ordine || 0)).map(c => ({
     id:c.id, name:c.name, ed:c.ed || "", type:c.type, soglia:c.soglia, bonus:c.bonus,
-    settimane:c.settimane || 8, base:c.giornate_base || 0, bonusAss:c.bonus_ass || null,
+    settimane:c.settimane || 8, base:c.giornate_base || 0, bonusAss:c.bonus_ass || null, ultima:c.ultima || null,
     carry:c.carry || {}, events:[]}));
   const idx = {}; d.champs.forEach(c => idx[c.id] = c);
   r.events.forEach(e => {
@@ -1524,7 +1612,7 @@ async function drawLocandina(ev){
   const left = logo ? L + 210 : L;
 
   x.textAlign = "right"; x.textBaseline = "alphabetic"; x.fillStyle = "#16365C";
-  const titolo = (ch.name + " " + ((ch.ed||"").match(/\d+/)||[""])[0]).trim().toUpperCase();
+  const titolo = (ch.name + " " + edizioneDi(ch)).trim().toUpperCase();
   fitFont(x, titolo, R - left, "800", 62, 24);
   x.fillText(titolo, R, 96);
 
@@ -1670,7 +1758,7 @@ function setLogo(file){
 /* ---------- testo e backup ---------- */
 function testoClassifica(){
   const c = C(), l = classifica().filter(r => r.pres > 0);
-  return [c.name + " — " + c.ed, "Classifica generale", ""]
+  return [c.name, "Classifica generale", ""]
     .concat(l.map((r,i) => `${i+1}. ${r.name} — ${r.tot} pt (${r.pres} pres.)`)).join("\n");
 }
 function testoEvento(ev){
