@@ -885,6 +885,9 @@ function renderAltro(){
       <button data-act="cset" data-k="settimane" data-v="-1">−</button><b>${c.settimane || 8}</b>
       <button data-act="cset" data-k="settimane" data-v="1">+</button><small>settimane, 2 giornate ciascuna</small></div>
     <p class="note">${giornateChiuse(c)} giornat${giornateChiuse(c)===1?"a":"e"} su ${giornatePreviste(c)} previste.</p>
+    <h2 style="margin-top:18px">Data delle finali (top 8)</h2>
+    <label class="fld" style="max-width:220px"><input type="date" data-act="datafinale" value="${c.dataFinale || ""}" ${canWrite() ? "" : "disabled"}></label>
+    <p class="note" style="margin-top:-4px">Compare su tutte le locandine e sull'immagine della classifica.</p>
     <h2 style="margin-top:18px">Giornate già giocate prima dell'app</h2>
     <div class="stepper">
       <button data-act="cset" data-k="base" data-v="-1">−</button><b>${c.base || 0}</b>
@@ -1169,6 +1172,7 @@ document.addEventListener("input", e => {
     const tab = document.getElementById("tabClass"); if(tab) tab.innerHTML = tabellaClassifica(list);
     const nota = document.getElementById("bonusNota"); if(nota) nota.textContent = notaBonus(c2, list.filter(r => r.bonus).length);
   }
+  if(e.target.matches('[data-act="datafinale"]') && canWrite()){ C().dataFinale = e.target.value || ""; save(); }
   if(e.target.matches('[data-act="firma"]') && canWrite()){ D.settings.firma = e.target.value; save(); }
   if(e.target.matches('[data-act="logo"]')) setLogo(e.target.files[0]);
   if(e.target.matches('[data-act="import"]')) doImport(e.target.files[0]);
@@ -1276,7 +1280,7 @@ document.addEventListener("click", e => {
     const seeds = {}; const t = totals(null, c);
     coppie.forEach((pr,i) => seeds[i] = (t[pr[0]] ? t[pr[0]].pts : 0) + (t[pr[1]] ? t[pr[1]].pts : 0));
     const id = uid();
-    c.events.push({id, created:Date.now(), name:"Finale a 8", date:oggi(), ora:"", mult:1, campi:2,
+    c.events.push({id, created:Date.now(), name:"Finale a 8", date:c.dataFinale || oggi(), ora:"", mult:1, campi:2,
       finale:true, status:"bozza", presenti:ids, pairs:coppie, seeds,
       matches:[{pa:0, pb:1, winner:null}, {pa:2, pb:3, winner:null}],
       storico:[], ordine:null, punti:null});
@@ -1444,8 +1448,11 @@ function rigaClass(x, X, Y, W, H, dati, verde){
   x.textBaseline = "middle"; x.fillStyle = CL.testo;
   x.textAlign = "center"; fitFont(x, String(dati.pos), 46, "700", s+2, 14);
   x.fillText(String(dati.pos), X + 34, cy);
-  x.textAlign = "left"; fitFont(x, dati.nome, W - 178, "700", s, 15);
+  const tipi = dati.id ? tipiVittorie(dati.id) : [], rS = H > 60 ? 11 : 9;
+  const wS = larghezzaStelle(tipi.length, rS);
+  x.textAlign = "left"; fitFont(x, dati.nome, W - 178 - (wS ? wS + 10 : 0), "700", s, 13);
   x.fillText(dati.nome, X + 64, cy);
+  if(tipi.length) disegnaStelle(x, tipi, X + 64 + x.measureText(dati.nome).width + 10, cy, rS, "rgba(255,255,255,.85)");
   x.textAlign = "center"; fitFont(x, String(dati.pl), 50, "700", s-2, 13);
   x.fillText(String(dati.pl), X + W - 96, cy);
   x.textAlign = "center"; fitFont(x, String(dati.pts), 66, "700", s, 13);
@@ -1460,11 +1467,47 @@ function intestaCol(x, X, W, Y){
   x.fillText("PTS", X + W - 36, Y);
 }
 
+/* stelline disegnate come forme, uguali su ogni telefono */
+const COL_STELLA = {maschile:["#2F6FDB"], femminile:["#E0569B"], misto:["#2F6FDB","#E0569B"]};
+function tipiVittorie(id){
+  return vittorieDi(id).sort((a,b) => (ORDINE_TIPI[a.tipo] - ORDINE_TIPI[b.tipo]) || ((parseInt(a.edizione)||0) - (parseInt(b.edizione)||0)))
+    .map(a => a.tipo);
+}
+function stellaPath(x, cx, cy, r){
+  x.beginPath();
+  for(let i=0; i<10; i++){
+    const ang = -Math.PI/2 + i*Math.PI/5, rr = i % 2 ? r*0.46 : r;
+    x.lineTo(cx + rr*Math.cos(ang), cy + rr*Math.sin(ang));
+  }
+  x.closePath();
+}
+function larghezzaStelle(n, r){ return n ? n*(2*r) + (n-1)*Math.round(r*0.35) : 0; }
+function disegnaStelle(x, tipi, X, cy, r, bordo){
+  const passo = 2*r + Math.round(r*0.35);
+  tipi.forEach((tipo, i) => {
+    const cx = X + r + i*passo, col = COL_STELLA[tipo] || ["#D4A017"];
+    x.save();
+    stellaPath(x, cx, cy, r); x.fillStyle = col[0]; x.fill();
+    if(col[1]){
+      x.save(); x.beginPath(); x.rect(cx, cy - r - 2, r + 2, 2*r + 4); x.clip();
+      stellaPath(x, cx, cy, r); x.fillStyle = col[1]; x.fill(); x.restore();
+    }
+    if(bordo){ stellaPath(x, cx, cy, r); x.lineWidth = 1.6; x.strokeStyle = bordo; x.stroke(); }
+    x.restore();
+  });
+  return larghezzaStelle(tipi.length, r);
+}
+function testoFinali(ch){
+  const d = ch.dataFinale || ((finaleDi(ch) || {}).date) || "";
+  return d ? dataLunga({date:d}) : "";
+}
+
 async function drawClassifica(ch){
   ch = ch || C();
   const lista = classifica(ch).filter(r => r.pres > 0)
-    .map((r,i) => ({pos:i+1, nome:r.name.toUpperCase(), pl:r.pres, pts:r.tot}));
+    .map((r,i) => ({id:r.id, pos:i+1, nome:r.name.toUpperCase(), pl:r.pres, pts:r.tot}));
   if(!lista.length) throw new Error("classifica vuota");
+  const dataF = testoFinali(ch);
 
   let logo = null;
   if(D.settings.logo){ try{ logo = await loadImg(D.settings.logo); }catch(e){} }
@@ -1486,7 +1529,7 @@ async function drawClassifica(ch){
     const W = 1080, HEAD = 356, LEG = 150;
     const primaPag = idx === 0;
     const hSx = primaPag ? 72 : 50, hDx = 50;
-    const conFinale = fin && idx === blocchi.length - 1 && !bl.dx.length;
+    const conFinale = !!dataF && idx === blocchi.length - 1 && !bl.dx.length;
     const corpo = Math.max(bl.sx.length * hSx, bl.dx.length * hDx, conFinale ? 400 : 240);
     const H = HEAD + corpo + LEG;
     const cv = document.createElement("canvas");
@@ -1523,7 +1566,7 @@ async function drawClassifica(ch){
       const cx = 168 - (perRiga-1)*22 + (i % perRiga) * 44;
       const cy = 246 + Math.floor(i / perRiga) * 38;
       const ultimo = i === sett - 1;
-      if(ultimo && fin){
+      if(ultimo && (fin || dataF)){
         rrect(x, cx-17, cy-14, 34, 28, 7); x.fillStyle = CL.verde; x.fill();
         x.fillStyle = CL.testo; x.font = "700 16px Archivo, Arial"; x.fillText("F8", cx, cy);
       } else if(i < fatte){
@@ -1537,6 +1580,17 @@ async function drawClassifica(ch){
     }
     x.strokeStyle = "rgba(255,255,255,.25)"; x.lineWidth = 2;
     x.beginPath(); x.moveTo(300, 168); x.lineTo(300, 296); x.stroke();
+
+    /* finali in calendario, al centro dell'intestazione */
+    if(dataF){
+      const bx = 360, bw = 420, by = 168, bh = 118;
+      rrect(x, bx, by, bw, bh, 18); x.fillStyle = CL.verde; x.fill();
+      x.strokeStyle = CL.verdeChiaro; x.lineWidth = 2; rrect(x, bx, by, bw, bh, 18); x.stroke();
+      x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = CL.testo;
+      fitFont(x, "FINALS TOP 8", bw - 40, "800", 34, 18); x.fillText("FINALS TOP 8", bx + bw/2, by + 40);
+      x.fillStyle = "#F3D27A"; fitFont(x, dataF.toUpperCase(), bw - 40, "700", 26, 14);
+      x.fillText(dataF.toUpperCase(), bx + bw/2, by + 82);
+    }
 
     /* giornata a destra */
     x.textAlign = "right"; x.fillStyle = "#67C7F5"; x.font = "600 20px Archivo, Arial";
@@ -1559,8 +1613,9 @@ async function drawClassifica(ch){
       fitFont(x, "FINALS", Wc, "800", 54, 24); x.fillText("FINALS", Xdx + Wc/2, HEAD + 110);
       fitFont(x, ch.name.toUpperCase(), Wc, "800", 42, 20);
       x.fillText(ch.name.toUpperCase(), Xdx + Wc/2, HEAD + 175);
-      fitFont(x, dataIt(fin.date), Wc, "800", 42, 20);
-      x.fillText(dataIt(fin.date), Xdx + Wc/2, HEAD + 235);
+      const dF = ch.dataFinale || (fin && fin.date) || "";
+      fitFont(x, dataIt(dF), Wc, "800", 42, 20);
+      x.fillText(dataIt(dF), Xdx + Wc/2, HEAD + 235);
       x.fillStyle = CL.tenue; x.font = "600 22px Archivo, Arial";
       x.fillText("I migliori 8 giocatori si", Xdx + Wc/2, HEAD + 300);
       x.fillText("sfideranno al tabellone F8", Xdx + Wc/2, HEAD + 330);
@@ -1602,44 +1657,4 @@ let SYNC = {stato:"avvio", msg:""};
 const ls = (k,v) => { try{ return v === undefined ? localStorage.getItem(k) : (v === null ? localStorage.removeItem(k) : localStorage.setItem(k,v)); }catch(e){ return null; } };
 const canWrite = () => !!SESSION || ls(GKEY) === "1";   // permesso nell'interfaccia
 const canSync  = () => !!SB && !!SESSION;               // permesso di scrivere sul database
-const dirty    = () => ls(RKEY) !== null && String(D.rev || 0) !== String(ls(RKEY));
-const setSynced = () => ls(RKEY, String(D.rev || 0));
-function setSync(stato, msg){ SYNC = {stato, msg:msg || "", at:Date.now()}; }
-
-function qLoad(){ try{ QUEUE = JSON.parse(ls(QKEY) || "[]"); }catch(e){ QUEUE = []; } }
-function qSave(){ ls(QKEY, JSON.stringify(QUEUE)); }
-
-/* --- conversione stato <-> righe --- */
-function rowsOf(st){
-  const out = {players:[], champs:[], events:[], settings:[], albo:[]};
-  st.players.forEach(p => out.players.push({id:p.id, name:p.name, sex:p.sex || "M", archived:!!p.archived, v:VERSIONE_DATI}));
-  st.champs.forEach((c,i) => out.champs.push({id:c.id, name:c.name, ed:c.ed || "", type:c.type,
-    soglia:c.soglia, bonus:c.bonus, settimane:c.settimane || 8, giornate_base:c.base || 0,
-    bonus_ass:c.bonusAss || null, ultima:c.ultima || null, carry:c.carry || {}, ordine:i, v:VERSIONE_DATI}));
-  st.champs.forEach(c => (c.events || []).forEach(e => out.events.push({
-    id:e.id, champ_id:c.id, name:e.name, data:e.date || null, ora:e.ora || null,
-    mult:e.mult || 1, campi:e.campi || 5, status:e.status || "bozza", finale:!!e.finale,
-    presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [], seeds:e.seeds || {},
-    storico:e.storico || [], ordine:e.ordine || null, punti:e.punti || null, created:e.created || 0, v:VERSIONE_DATI})));
-  out.settings.push({id:1, data:st.settings || {}, v:VERSIONE_DATI});
-  out.albo = (st.albo || []).map(a => ({id:a.id, champ_id:a.champ_id || null, tipo:a.tipo,
-    edizione:String(a.edizione), data:a.data || null, giocatori:a.giocatori || [], nomi:a.nomi || [], v:VERSIONE_DATI}));
-  return out;
-}
-function stateFromRows(r){
-  const d = {v:2, rev:(D && D.rev) || 0, settings:(r.settings[0] && r.settings[0].data) || {campi:5},
-    players:[], champs:[], cur:null};
-  d.players = r.players.map(p => ({id:p.id, name:p.name, sex:p.sex || "M", archived:!!p.archived}));
-  d.champs = [...r.champs].sort((a,b) => (a.ordine || 0) - (b.ordine || 0)).map(c => ({
-    id:c.id, name:c.name, ed:c.ed || "", type:c.type, soglia:c.soglia, bonus:c.bonus,
-    settimane:c.settimane || 8, base:c.giornate_base || 0, bonusAss:c.bonus_ass || null, ultima:c.ultima || null,
-    carry:c.carry || {}, events:[]}));
-  const idx = {}; d.champs.forEach(c => idx[c.id] = c);
-  r.events.forEach(e => {
-    const c = idx[e.champ_id]; if(!c) return;
-    c.events.push({id:e.id, created:Number(e.created) || 0, name:e.name, date:e.data || "",
-      ora:e.ora || "", mult:e.mult || 1, campi:e.campi || 5, status:e.status || "bozza", finale:!!e.finale,
-      presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [], seeds:e.seeds || {},
-      storico:e.storico || [], ordine:e.ordine || null, punti:e.punti || null});
-  });
-  d.albo = (r.albo || []).map(a => ({id:a.id, champ_id:a.champ_id, tipo:a.tipo, edizione:S
+const
