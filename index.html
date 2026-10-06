@@ -158,6 +158,35 @@ button{cursor:pointer;}
   .lead td{background:color-mix(in srgb,var(--ball) 20%,var(--paper));}
 }
 .rowtap{cursor:pointer;}
+.stelle{font-size:1.18em;white-space:nowrap;vertical-align:-1px;}
+.stella{display:inline-block;width:1.02em;text-align:center;line-height:1;}
+.stella--maschile{color:#2F6FDB;}
+.stella--femminile{color:#E0569B;}
+.stella--misto{color:#8A5FC4;}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .stella--misto{background:linear-gradient(90deg,#2F6FDB 50%,#E0569B 50%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;}
+}
+.legenda{display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 0;font-size:12.5px;color:var(--ink-soft);}
+.btn--oro{background:linear-gradient(180deg,#F3D27A,#D4A017);border-color:#C29312;color:#3B2A00;
+  box-shadow:0 2px 10px rgba(212,160,23,.35);}
+.albo{margin-top:26px;padding:16px;border-radius:var(--radius);border:1px solid #E2C46A;
+  background:linear-gradient(180deg,color-mix(in srgb,#F3D27A 18%,var(--paper)),var(--paper));}
+.albo__t{margin:0 0 10px;font-size:14px;font-weight:800;letter-spacing:.14em;color:#A97F0B;font-stretch:112%;}
+.albo__voce{display:flex;align-items:center;gap:12px;width:100%;padding:11px 4px;border:0;
+  border-top:1px solid color-mix(in srgb,#D4A017 30%,transparent);background:transparent;text-align:left;color:inherit;}
+.albo__voce:first-of-type{border-top:0;}
+.albo__ed{font-size:20px;font-weight:800;font-stretch:112%;color:#A97F0B;min-width:44px;}
+.albo__nomi{flex:1;font-size:15.5px;font-weight:600;line-height:1.3;}
+.albo__data{font-size:12.5px;color:var(--ink-soft);}
+.albo__vuoto{margin:0;font-size:13.5px;color:var(--ink-soft);}
+.trofeo{font-size:64px;text-align:center;line-height:1;margin:6px 0 4px;}
+.festa{text-align:center;padding:8px 0 4px;}
+.festa__sopra{margin:6px 0 0;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);}
+.festa__torneo{margin:2px 0 14px;font-size:15px;font-weight:700;color:#A97F0B;}
+.festa__nome{margin:0;font-size:28px;font-weight:800;font-stretch:112%;letter-spacing:-.01em;}
+.festa__e{margin:2px 0;font-size:14px;color:var(--ink-soft);}
+.festa__data{margin:14px 0 0;font-size:13.5px;color:var(--ink-soft);}
 :root{--verde:#12805C;}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--verde:#3DDC97;} }
 :root[data-theme="dark"]{--verde:#3DDC97;}
@@ -241,7 +270,7 @@ function save(){
 }
 function load(){ try{ const r = localStorage.getItem(KEY); if(r){ const d = JSON.parse(r); if(d && d.champs) return d; } }catch(e){} return null; }
 function fresh(){
-  const d = {v:2, settings:{campi:5}, players:[], champs:[], cur:null};
+  const d = {v:2, settings:{campi:5}, players:[], champs:[], albo:[], cur:null};
   const byName = {};
   (SEED && SEED.players || []).forEach(p => {
     const id = uid(); d.players.push({id, name:p.n, sex:p.s}); byName[p.n] = id;
@@ -377,6 +406,10 @@ function normalizzaTornei(){
   if(D.champs.length !== nuovi.length || D.champs.some((c,i) => c !== nuovi[i])) cambiato = true;
   D.champs = nuovi;
   if(!D.champs.some(c => c.id === D.cur)){ D.cur = D.champs[0].id; cambiato = true; }
+  (D.albo || []).forEach(a => {
+    const m = D.champs.find(c => c.type === a.tipo);
+    if(m && a.champ_id !== m.id){ a.champ_id = m.id; cambiato = true; }
+  });
 
   /* giocatori doppi con lo stesso nome: li unisco */
   const gruppi = {};
@@ -390,6 +423,29 @@ function normalizzaTornei(){
     g.slice(1).forEach(dup => { mergePlayers(dup.id, g[0].id); cambiato = true; });
   });
   return cambiato;
+}
+/* --- albo d'oro --- */
+function vittorieDi(id){ return (D.albo || []).filter(a => (a.giocatori || []).includes(id)); }
+/* una stella per vittoria: blu maschile, rosa femminile, metà e metà misto */
+const ORDINE_TIPI = {maschile:0, femminile:1, misto:2};
+function stelle(id){
+  const v = vittorieDi(id).sort((a,b) => (ORDINE_TIPI[a.tipo] - ORDINE_TIPI[b.tipo]) || ((parseInt(a.edizione)||0) - (parseInt(b.edizione)||0)));
+  if(!v.length) return "";
+  return `<span class="stelle">${v.map(a => {
+    const ch = D.champs.find(c => c.type === a.tipo);
+    return `<span class="stella stella--${a.tipo}" title="${esc((ch ? ch.name : a.tipo) + " · " + a.edizione + "ª edizione")}">★</span>`;
+  }).join("")}</span>`;
+}
+function nomeAlbo(a, i){ const id = (a.giocatori || [])[i]; const p = id && D.players.find(x => x.id === id); return p ? p.name : ((a.nomi || [])[i] || "?"); }
+function albumDi(ch){
+  return (D.albo || []).filter(a => a.tipo === ch.type)
+    .sort((x,y) => (parseInt(y.edizione,10) || 0) - (parseInt(x.edizione,10) || 0));
+}
+function vincitoreFinale(ev){
+  if(!ev || !ev.finale || (ev.storico || []).length < 1) return null;
+  const m = ev.matches && ev.matches[0];
+  if(!m || (m.winner !== "a" && m.winner !== "b")) return null;
+  return ev.pairs[m.winner === "a" ? m.pa : m.pb] || null;
 }
 function giornateChiuse(ch){
   ch = ch || C();
@@ -619,7 +675,7 @@ function renderEvento(){
       ${ev.matches.map((m,i) => matchCard(ev,m,i,true)).join("")}</div>
       <div class="block">
         ${turno >= 2
-          ? `<button class="btn" data-act="close" ${evReady(ev)?"":"disabled"}>Proclama i campioni</button>`
+          ? `<button class="btn btn--oro" data-act="decreta" data-fin="${ev.id}" ${evReady(ev)?"":"disabled"}>🏆 Decreta i campioni</button>`
           : `<button class="btn" data-act="turno" ${evReady(ev)?"":"disabled"}>Vai alla finale</button>`}
         ${!evReady(ev)?`<p class="note">Segna il vincitore di ogni campo.</p>`:""}
         <button class="btn btn--quiet" data-act="loca">Crea la locandina</button>
@@ -760,7 +816,22 @@ function renderClassifica(){
     if(f) return `<button class="btn btn--quiet" data-act="openev" data-id="${f.id}">Apri la finale a 8</button>`;
     if(list.length < 8) return `<p class="note">Servono almeno 8 giocatori con presenze per creare la finale.</p>`;
     return `<button class="btn btn--quiet" data-act="finale8">Crea la finale a 8</button>`;
-  })()}` : ""}`;
+  })()}` : ""}
+  ${renderAlbo(c)}`;
+}
+function renderAlbo(c){
+  const voci = albumDi(c);
+  return `<section class="albo">
+    <h2 class="albo__t">ALBO D'ORO</h2>
+    ${voci.length ? voci.map(a => `
+      <button class="albo__voce" data-act="albovedi" data-id="${a.id}">
+        <span class="albo__ed">${esc(a.edizione)}ª</span>
+        <span class="albo__nomi">${esc(nomeAlbo(a,0))}<br>${esc(nomeAlbo(a,1))}</span>
+        <span class="albo__data">${a.data ? dataIt(a.data) : ""}</span>
+      </button>`).join("")
+    : `<p class="albo__vuoto">Nessuna edizione ancora. I campioni compariranno qui dopo la finale.</p>`}
+    ${canWrite() ? `<button class="btn btn--oro" data-act="decreta" style="margin-top:12px">🏆 Decreta i campioni</button>` : ""}
+  </section>`;
 }
 function notaBonus(c, premiati){
   if(!(c.bonus > 0) || !(c.soglia > 0)) return "Bonus spento: metti punti e presenze per attivarlo.";
@@ -785,7 +856,10 @@ function renderGiocatori(){
   app.innerHTML = `
   <header class="top">${champBtn()}
     <div class="top__row"><div><h1 class="top__title">Giocatori</h1>
-    <p class="top__meta">${list.length} disponibili per questo campionato${fuori?` · ${fuori} ritirati`:""}</p></div></div></header>
+    <p class="top__meta">${list.length} disponibili per questo campionato${fuori?` · ${fuori} ritirati`:""}</p>
+    ${(D.albo || []).length ? `<p class="legenda"><span><span class="stella stella--maschile">★</span> Maschile</span>
+      <span><span class="stella stella--femminile">★</span> Femminile</span>
+      <span><span class="stella stella--misto">★</span> Misto</span></p>` : ""}</div></div></header>
   <label class="fld"><input id="q" placeholder="Cerca un nome" value="${esc(search)}" data-act="search" autocomplete="off"></label>
   <form class="row2" data-act="addp2">
     <input id="newp2" placeholder="Nuovo giocatore" autocomplete="off" enterkeyhint="done"
@@ -795,7 +869,7 @@ function renderGiocatori(){
     <button class="btn btn--ghost btn--sm" type="submit" style="flex:0 0 auto;">Aggiungi</button>
   </form>
   <ul class="plist">${list.map(p=>`<li><button class="ptap" data-act="player" data-id="${p.id}">
-    <span class="nm">${esc(p.name)}</span>${c.type==="misto"?`<span class="sx">${p.sex}</span>`:""}
+    <span class="nm">${esc(p.name)} ${stelle(p.id)}</span>${c.type==="misto"?`<span class="sx">${p.sex}</span>`:""}
     <span class="pt">${t[p.id].pts} pt · ${t[p.id].pres} pres.</span></button></li>`).join("")}</ul>`;
 }
 
@@ -879,6 +953,12 @@ function renderSheet(){
 
   if(sheet.tipo === "player"){
     const p = P(sheet.id);
+    const vinte = vittorieDi(sheet.id).sort((x,y) => (x.tipo > y.tipo ? 1 : -1) || (parseInt(x.edizione)||0) - (parseInt(y.edizione)||0));
+    const htmlVinte = vinte.length ? `<div class="block"><h2>Vittorie ${stelle(sheet.id)}</h2>
+      ${vinte.map(a => { const comp = (a.giocatori||[]).find(x => x !== sheet.id);
+        const nomeComp = comp ? nm(comp) : ((a.nomi||[]).find(n => n !== p.name) || "");
+        const ch = D.champs.find(c => c.type === a.tipo);
+        return `<p class="note" style="margin:6px 0">🏆 ${esc(ch ? ch.name : a.tipo)}, ${esc(a.edizione)}ª edizione — con ${esc(nomeComp)}</p>`; }).join("")}</div>` : "";
     const righe = [];
     D.champs.forEach(ch => {
       const t = totals(null, ch);
@@ -893,9 +973,10 @@ function renderSheet(){
         return `<tr><td>${esc(e.name)}<br><span class="pt">con ${esc(nm(comp))}</span></td><td class="pts">${pp[sheet.id]}</td></tr>`; });
     const altri = D.players.filter(x => x.id !== sheet.id && x.sex === p.sex && !x.archived)
       .sort((a,b) => a.name.localeCompare(b.name));
-    inner = `<h3>${esc(p.name)}</h3><p class="hint">${p.sex === "F" ? "Donna" : "Uomo"}</p>
+    inner = `<h3>${esc(p.name)} ${stelle(sheet.id)}</h3><p class="hint">${p.sex === "F" ? "Donna" : "Uomo"}</p>
       ${righe.length?`<table class="table"><thead><tr><th>Campionato</th><th>Punti</th><th>Pres.</th></tr></thead>
         <tbody>${righe.join("")}</tbody></table>`:`<p class="empty">Nessuna presenza registrata.</p>`}
+      ${htmlVinte}
       ${sto.length?`<div class="block"><h2>Giornate in ${esc(C().name)}</h2>
         <table class="table"><tbody>${sto.join("")}</tbody></table></div>`:""}
       <div class="block"><h2>Correzioni</h2>
@@ -947,6 +1028,44 @@ function renderSheet(){
         <button class="btn btn--ghost" data-act="loca-share">Condividi</button>
         <button class="btn btn--quiet" data-act="loca-pdf">Scarica il PDF</button>
         <button class="btn btn--quiet" data-act="closesheet">Chiudi</button>
+      </div>`;
+  }
+
+  if(sheet.tipo === "decreta"){
+    const c = C(), t = sheet.tmp;
+    const cand = D.players.filter(p => eligible(p) || t.p1 === p.id || t.p2 === p.id)
+      .sort((a,b) => a.name.localeCompare(b.name));
+    const opz = sel => `<option value="">— scegli —</option>` +
+      cand.map(p => `<option value="${p.id}" ${p.id === sel ? "selected" : ""}>${esc(p.name)}</option>`).join("");
+    inner = `<div class="trofeo">🏆</div>
+      <h3 style="text-align:center">Decreta i campioni</h3>
+      <p class="hint" style="text-align:center">${esc(c.name)}${t.daFinale ? " · coppia vincitrice della finale" : ""}</p>
+      <label class="fld"><span>Primo campione</span><select id="dv_p1">${opz(t.p1)}</select></label>
+      <label class="fld"><span>Secondo campione</span><select id="dv_p2">${opz(t.p2)}</select></label>
+      <div class="row2">
+        <label class="fld"><span>Edizione</span><input id="dv_ed" inputmode="numeric" value="${esc(t.ed)}" placeholder="es. 2"></label>
+        <label class="fld"><span>Data</span><input id="dv_data" type="date" value="${t.data}"></label>
+      </div>
+      <button class="btn btn--oro" data-act="incorona">Incorona i campioni</button>
+      <button class="btn btn--quiet" data-act="closesheet">Annulla</button>`;
+  }
+
+  if(sheet.tipo === "campioni" || sheet.tipo === "albovoce"){
+    const a = (D.albo || []).find(x => x.id === sheet.id);
+    if(!a){ sheet = null; return; }
+    const ch = D.champs.find(c => c.type === a.tipo);
+    inner = `<div class="festa">
+        <div class="trofeo">🏆</div>
+        <p class="festa__sopra">${sheet.tipo === "campioni" ? "I campioni del" : "Campioni del"}</p>
+        <p class="festa__torneo">${esc(ch ? ch.name : a.tipo)} · ${esc(a.edizione)}ª edizione</p>
+        <p class="festa__nome">${esc(nomeAlbo(a,0))}</p>
+        <p class="festa__e">e</p>
+        <p class="festa__nome">${esc(nomeAlbo(a,1))}</p>
+        ${a.data ? `<p class="festa__data">${esc(dataLunga({date:a.data}))}</p>` : ""}
+      </div>
+      <div class="block">
+        <button class="btn" data-act="closesheet">${sheet.tipo === "campioni" ? "Fantastico" : "Chiudi"}</button>
+        ${sheet.tipo === "albovoce" && canWrite() ? `<button class="btn btn--danger" data-act="albotogli" data-id="${a.id}">Togli dall'albo d'oro</button>` : ""}
       </div>`;
   }
 
@@ -1211,6 +1330,38 @@ document.addEventListener("click", e => {
     save(); render(); toast("Punti ricalcolati"); return;
   }
   if(a === "close"){ ev.status = "chiuso"; save(); render(); toast("Classifica aggiornata"); return; }
+  if(a === "decreta"){
+    const fin = el.dataset.fin ? EV(el.dataset.fin) : finaleDi(c);
+    const coppia = vincitoreFinale(fin);
+    sheet = {tipo:"decreta", tmp:{p1:coppia ? coppia[0] : "", p2:coppia ? coppia[1] : "",
+      ed:edizioneDi(c), data:oggi(), finaleId:fin && coppia ? fin.id : null, daFinale:!!coppia}};
+    render(); return;
+  }
+  if(a === "incorona"){
+    const p1 = document.getElementById("dv_p1").value, p2 = document.getElementById("dv_p2").value;
+    const ed = (document.getElementById("dv_ed").value || "").trim();
+    const data = document.getElementById("dv_data").value || oggi();
+    sheet.tmp = {...sheet.tmp, p1, p2, ed, data};
+    if(!p1 || !p2){ toast("Scegli tutti e due i campioni"); return; }
+    if(p1 === p2){ toast("Servono due giocatori diversi"); return; }
+    if(c.type === "misto" && P(p1).sex === P(p2).sex){ toast("Nel misto la coppia è una donna e un uomo"); return; }
+    if(!ed){ toast("Scrivi il numero dell'edizione"); return; }
+    const gia = (D.albo || []).find(x => x.tipo === c.type && String(x.edizione) === ed);
+    if(gia && !confirm(`Per la ${ed}ª edizione c'è già ${nomeAlbo(gia,0)} e ${nomeAlbo(gia,1)}. Li sostituisco?`)) return;
+    D.albo = (D.albo || []).filter(x => x !== gia);
+    const rec = {id:uid(), champ_id:c.id, tipo:c.type, edizione:ed, data, giocatori:[p1,p2], nomi:[nm(p1), nm(p2)]};
+    D.albo.push(rec);
+    if(sheet.tmp.finaleId){ const f = EV(sheet.tmp.finaleId); if(f) f.status = "chiuso"; }
+    D.settings.edizioni = D.settings.edizioni || {};
+    if(!D.settings.edizioni[c.id]) D.settings.edizioni[c.id] = ed;
+    sheet = {tipo:"campioni", id:rec.id}; save(); render(); return;
+  }
+  if(a === "albovedi"){ sheet = {tipo:"albovoce", id:el.dataset.id}; render(); return; }
+  if(a === "albotogli"){
+    const x = (D.albo || []).find(y => y.id === el.dataset.id); if(!x) return;
+    if(!confirm(`Tolgo ${nomeAlbo(x,0)} e ${nomeAlbo(x,1)} dall'albo d'oro della ${x.edizione}ª edizione?`)) return;
+    D.albo = D.albo.filter(y => y !== x); sheet = null; save(); render(); toast("Tolti dall'albo d'oro"); return;
+  }
   if(a === "reopen"){ ev.status = "bozza"; step = "tabellone"; save(); render(); return; }
   if(a === "correggi"){ ev.status = "bozza"; initPunti(ev); step = "punti"; save(); render(); return; }
 
@@ -1262,6 +1413,7 @@ function mergePlayers(from, to){
       ev.pairs = (ev.pairs||[]).map(pr => pr.map(x => x === from ? to : x));
     });
   });
+  (D.albo || []).forEach(a => { a.giocatori = (a.giocatori || []).map(x => x === from ? to : x); });
   D.players = D.players.filter(p => p.id !== from);
 }
 
@@ -1459,7 +1611,7 @@ function qSave(){ ls(QKEY, JSON.stringify(QUEUE)); }
 
 /* --- conversione stato <-> righe --- */
 function rowsOf(st){
-  const out = {players:[], champs:[], events:[], settings:[]};
+  const out = {players:[], champs:[], events:[], settings:[], albo:[]};
   st.players.forEach(p => out.players.push({id:p.id, name:p.name, sex:p.sex || "M", archived:!!p.archived, v:VERSIONE_DATI}));
   st.champs.forEach((c,i) => out.champs.push({id:c.id, name:c.name, ed:c.ed || "", type:c.type,
     soglia:c.soglia, bonus:c.bonus, settimane:c.settimane || 8, giornate_base:c.base || 0,
@@ -1470,6 +1622,8 @@ function rowsOf(st){
     presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [], seeds:e.seeds || {},
     storico:e.storico || [], ordine:e.ordine || null, punti:e.punti || null, created:e.created || 0, v:VERSIONE_DATI})));
   out.settings.push({id:1, data:st.settings || {}, v:VERSIONE_DATI});
+  out.albo = (st.albo || []).map(a => ({id:a.id, champ_id:a.champ_id || null, tipo:a.tipo,
+    edizione:String(a.edizione), data:a.data || null, giocatori:a.giocatori || [], nomi:a.nomi || [], v:VERSIONE_DATI}));
   return out;
 }
 function stateFromRows(r){
@@ -1488,411 +1642,4 @@ function stateFromRows(r){
       presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [], seeds:e.seeds || {},
       storico:e.storico || [], ordine:e.ordine || null, punti:e.punti || null});
   });
-  d.cur = d.champs.length ? d.champs[0].id : null;
-  return d;
-}
-function snapOf(rows){
-  const s = {};
-  for(const t in rows){ s[t] = {}; rows[t].forEach(r => s[t][String(r.id)] = JSON.stringify(r)); }
-  return s;
-}
-
-/* --- accoda le differenze; funziona anche senza rete --- */
-function pushDiff(){
-  if(!canWrite()) return;
-  const now = snapOf(rowsOf(D));
-  const prev = SNAP || {players:{}, champs:{}, events:{}, settings:{}};
-  for(const t in now){
-    const p = prev[t] || {};
-    for(const id in now[t]) if(p[id] !== now[t][id]) QUEUE.push({op:"up", t, row:JSON.parse(now[t][id])});
-    for(const id in p) if(!(id in now[t])) QUEUE.push({op:"del", t, id});
-  }
-  SNAP = now; compatta(); qSave(); flush();
-}
-function compatta(){
-  const m = new Map();
-  QUEUE.forEach(o => m.set(o.t + "|" + (o.op === "del" ? o.id : o.row.id), o));
-  QUEUE = [...m.values()];
-}
-async function flush(){
-  if(flushing || !canSync() || !QUEUE.length) return;
-  flushing = true; compatta(); qSave();
-  const rev = D.rev || 0;
-  try{
-    while(QUEUE.length){
-      const o = QUEUE[0];
-      const res = o.op === "up"
-        ? await SB.from(o.t).upsert(o.row)
-        : await SB.from(o.t).delete().eq("id", o.id);
-      if(res.error) throw res.error;
-      QUEUE.shift(); qSave();
-    }
-    ls(RKEY, String(rev));
-    setSync("ok");
-  }catch(e){
-    setSync("errore", (e && e.message) || "rete non raggiungibile");
-  }
-  flushing = false;
-  if(!openEvent && !sheet && tab === "altro") render();
-}
-async function pull(){
-  const [p,c,e,s] = await Promise.all([
-    SB.from("players").select("*"), SB.from("champs").select("*"),
-    SB.from("events").select("*"), SB.from("settings").select("*")]);
-  const err = p.error || c.error || e.error || s.error;
-  if(err) throw err;
-  return {players:p.data || [], champs:c.data || [], events:e.data || [], settings:s.data || []};
-}
-
-async function syncNow(silenzioso){
-  if(!SB){ setSync("locale"); if(!silenzioso) toast("Database non raggiungibile"); render(); return; }
-  try{
-    setSync("corso"); if(!silenzioso) render();
-    let r = await pull();
-    let vuoto = !r.champs.length && !r.players.length;
-    // un dispositivo che non ha mai completato una sincronizzazione non ha niente da imporre:
-    // se il database ha già i dati, la sua coda è vecchia e va scartata
-    if(ls(RKEY) === null && !vuoto && QUEUE.length){ QUEUE = []; qSave(); }
-    if(QUEUE.length && canSync()){
-      await flush();
-      r = await pull();
-      vuoto = !r.champs.length && !r.players.length;
-    }
-    const remoto = stateFromRows(r);
-
-    if(canSync() && (vuoto || dirty() || QUEUE.length)){
-      // il dispositivo del gestore ha la versione buona: allineo il database
-      SNAP = snapOf(rowsOf(remoto));
-      normalizzaTornei();
-      pushDiff();
-      await flush();
-      if(!silenzioso) toast(vuoto ? "Dati caricati sul database" : "Database allineato");
-    } else if(!vuoto){
-      const prima = D.cur;
-      D = remoto;
-      if(prima && D.champs.some(c => c.id === prima)) D.cur = prima;
-      SNAP = snapOf(rowsOf(D));
-      salvaLocale(); setSynced();
-      if(normalizzaTornei()){
-        if(canSync()){ save(); if(!silenzioso) toast("Tornei doppi sistemati"); }
-        else salvaLocale();
-      }
-      if(!silenzioso) toast("Dati aggiornati");
-    }
-    if(SYNC.stato !== "errore") setSync("ok");
-  }catch(e){
-    setSync("errore", (e && e.message) || "rete non raggiungibile");
-    if(!silenzioso) toast("Sincronizzazione fallita");
-  }
-  if(openEvent && !EV(openEvent)) openEvent = null;
-  render();
-}
-
-async function initSync(){
-  qLoad();
-  if(!window.supabase || !window.supabase.createClient){
-    setSync("locale", "libreria non caricata"); render(); return;
-  }
-  try{
-    SB = window.supabase.createClient(SB_URL, SB_KEY);
-    const {data} = await SB.auth.getSession();
-    SESSION = (data && data.session) || null;
-    if(SESSION) ls(GKEY, "1");
-    SB.auth.onAuthStateChange((ev, s) => {
-      SESSION = s || null;
-      if(SESSION){ ls(GKEY, "1"); flush(); }
-      render();
-    });
-    await syncNow(true);
-  }catch(e){
-    setSync("errore", (e && e.message) || "connessione fallita"); render();
-  }
-  window.addEventListener("online", () => { if(canSync()) syncNow(true); });
-}
-async function login(mail, pwd){
-  if(!SB){ toast("Database non raggiungibile: riprova quando hai rete"); return; }
-  const {error} = await SB.auth.signInWithPassword({email:mail, password:pwd});
-  if(error){
-    toast(/Invalid login/i.test(error.message) ? "Mail o password sbagliate" : error.message);
-    return;
-  }
-  ls(GKEY, "1"); sheet = null;
-  toast("Sei in modalità gestore");
-  await syncNow(true);
-}
-async function logout(){
-  ls(GKEY, null); SESSION = null; sheet = null;
-  if(SB) await SB.auth.signOut();
-  await syncNow(true);
-  toast("Uscito dalla modalità gestore");
-}
-function testoSync(){
-  const coda = QUEUE.length ? " Ci sono " + QUEUE.length + " modifiche in attesa di partire." : "";
-  if(SYNC.stato === "corso") return "Sto sincronizzando…";
-  if(SYNC.stato === "errore") return "Database non raggiungibile (" + SYNC.msg + "). Continua a segnare: le modifiche restano sul telefono e partono da sole appena torna la rete." + coda;
-  if(SYNC.stato === "locale") return "Senza rete. L'app funziona lo stesso e salva sul telefono." + coda;
-  if(canWrite() && !SESSION) return "Modalità gestore attiva su questo dispositivo, ma la sessione è scaduta: rifai l'accesso per rimandare i dati online." + coda;
-  if(canWrite()) return "Modalità gestore: ogni modifica finisce subito sul database." + coda;
-  return "Sola lettura: vedi i dati aggiornati ma non puoi modificarli.";
-}
-const AZIONI_LETTURA = new Set(["home","closesheet","champs","setchamp","openev","step","player",
-  "loca","stampaclass","loca-png","loca-pdf","loca-share","shareclass","shareev","export","sync","login","logout","dologin"]);
-
-/* ---------- locandina ---------- */
-let LOCA = [];   // pagine da scaricare (locandina o classifica)
-const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
-const MESI = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
-
-function rrect(x,a,b,w,h,r){
-  x.beginPath();
-  x.moveTo(a+r,b); x.arcTo(a+w,b,a+w,b+h,r); x.arcTo(a+w,b+h,a,b+h,r);
-  x.arcTo(a,b+h,a,b,r); x.arcTo(a,b,a+w,b,r); x.closePath();
-}
-function fitFont(x, txt, maxW, weight, size, min){
-  let s = size;
-  while(s > (min||16)){ x.font = weight + " " + s + "px Archivo, Arial"; if(x.measureText(txt).width <= maxW) break; s -= 2; }
-  x.font = weight + " " + s + "px Archivo, Arial";
-  return s;
-}
-function pallina(x, cx, cy, r, fill, txt, col, size){
-  x.beginPath(); x.arc(cx, cy, r, 0, Math.PI*2); x.fillStyle = fill; x.fill();
-  x.fillStyle = col; x.textAlign = "center"; x.textBaseline = "middle";
-  fitFont(x, txt, r*1.7, "700", size, 14);
-  x.fillText(txt, cx, cy+1);
-}
-function dataLunga(ev){
-  if(!ev.date) return "";
-  const d = new Date(ev.date + "T12:00:00");
-  let s = GIORNI[d.getDay()] + " " + d.getDate() + " " + MESI[d.getMonth()];
-  if(ev.ora) s += " ore " + ev.ora;
-  return s;
-}
-function loadImg(src){
-  return new Promise((ok,no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
-}
-
-async function drawLocandina(ev){
-  const ch = C(), t = totals(ev.id);
-  const W = 1080, n = ev.matches.length;
-  let logo = null;
-  if(D.settings.logo){ try{ logo = await loadImg(D.settings.logo); }catch(e){} }
-  const HEAD = 300, ROW = 196, FOOT = D.settings.firma ? 120 : 70;
-  const H = HEAD + n*ROW + FOOT;
-  const cv = document.createElement("canvas");
-  cv.width = W; cv.height = H;
-  const x = cv.getContext("2d");
-  try{
-    await Promise.all(["800 60px Archivo","700 40px Archivo","600 30px Archivo","500 30px Archivo"]
-      .map(f => document.fonts.load(f)));
-    await document.fonts.ready;
-  }catch(e){}
-
-  const g = x.createLinearGradient(0,0,W,H);
-  g.addColorStop(0,"#F4F4F2"); g.addColorStop(1,"#D8DAD8");
-  x.fillStyle = g; x.fillRect(0,0,W,H);
-
-  const L = 40, R = W - 40;
-  if(logo){
-    const s = 186, ar = logo.width / logo.height;
-    const w = ar >= 1 ? s : s*ar, h = ar >= 1 ? s/ar : s;
-    x.drawImage(logo, L, 34, w, h);
-  }
-  const left = logo ? L + 210 : L;
-
-  x.textAlign = "right"; x.textBaseline = "alphabetic"; x.fillStyle = "#16365C";
-  const titolo = (ch.name + " " + edizioneDi(ch)).trim().toUpperCase();
-  fitFont(x, titolo, R - left, "800", 62, 24);
-  x.fillText(titolo, R, 96);
-
-  x.fillStyle = "#2F5F8E";
-  const turno = (ev.storico || []).length + 1;
-  const riga1 = ev.finale ? (turno === 1 ? "SEMIFINALI" : "FINALE")
-                          : (turno === 1 ? "INGRESSO IN CAMPO" : turno + "° TURNO");
-  fitFont(x, riga1, R - left, "700", 42, 20);
-  x.fillText(riga1, R, 152);
-  const sub = "(" + (ev.name || "").toUpperCase() + ")";
-  fitFont(x, sub, R - left, "700", 42, 20);
-  x.fillText(sub, R, 202);
-
-  const dl = dataLunga(ev);
-  if(dl){ x.fillStyle = "#39434A"; fitFont(x, dl, R - left, "400", 30, 16); x.fillText(dl, R, 250); }
-
-  for(let i=0; i<n; i++){
-    const m = ev.matches[i], top = HEAD + i*ROW;
-    x.fillStyle = "#C7B079"; rrect(x, 130, top, 820, 40, 5); x.fill();
-    x.fillStyle = "#2B2B2B"; x.textAlign = "center"; x.textBaseline = "middle";
-    fitFont(x, campoLabel(ev,i).replace(/ · .*/,""), 760, "600", 31, 18);
-    x.fillText(campoLabel(ev,i).replace("CAMPO","CAMPO"), 540, top+21);
-
-    const cy1 = top + 104, cy2 = top + 160, cym = (cy1+cy2)/2;
-    const A = ev.pairs[m.pa], B = (m.pb === null || m.pb === undefined) ? null : ev.pairs[m.pb];
-    const won = s => m.winner === s;
-
-    const lato = (ids, dir, win) => {
-      const cxC = dir < 0 ? 58 : W - 58;
-      const nx  = dir < 0 ? 104 : W - 104;
-      const u1  = dir < 0 ? 98 : 640, u2 = dir < 0 ? 440 : W - 98;
-      x.textAlign = dir < 0 ? "left" : "right";
-      ids.forEach((id, k) => {
-        const cy = k ? cy2 : cy1;
-        pallina(x, cxC, cy, 28, "#A98A4F", String(t[id] ? t[id].pts : 0), "#FFFFFF", 28);
-        x.fillStyle = "#15191C"; x.textBaseline = "middle";
-        x.textAlign = dir < 0 ? "left" : "right";
-        fitFont(x, nm(id), 334, win ? "700" : "500", 31, 17);
-        x.fillText(nm(id), nx, cy);
-      });
-      x.strokeStyle = "#13171A"; x.lineWidth = 5; x.lineCap = "round";
-      x.beginPath(); x.moveTo(u1, cym); x.lineTo(u2, cym); x.stroke();
-    };
-
-    lato(A, -1, won("a"));
-    if(B) lato(B, 1, won("b"));
-    else {
-      x.fillStyle = "#7A8488"; x.textAlign = "right"; x.textBaseline = "middle";
-      fitFont(x, "riposo", 300, "500", 31, 18);
-      x.fillText("riposo", W - 104, cym);
-    }
-
-    pallina(x, 492, cym, 42, "#F6E7C6", String(ev.seeds ? ev.seeds[m.pa] : 0), "#2B2B2B", 34);
-    if(B) pallina(x, 592, cym, 42, "#F7C98C", String(ev.seeds ? ev.seeds[m.pb] : 0), "#2B2B2B", 34);
-  }
-
-  if(D.settings.firma){
-    x.fillStyle = "#4C5559"; x.textAlign = "center"; x.textBaseline = "middle";
-    fitFont(x, D.settings.firma, W - 120, "700", 36, 18);
-    x.fillText(D.settings.firma, W/2, H - 62);
-  }
-  return cv;
-}
-
-async function offriFile(filename, blob){
-  try{
-    if(typeof claude !== "undefined" && claude.use){
-      const dl = await claude.use("downloads");
-      if(dl){ await dl.save({filename, data:blob}); toast("Salvato"); return; }
-    }
-  }catch(e){ if(e && e.code === "declined") return; }
-  try{
-    const u = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = u; a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(u), 5000);
-    toast("Scaricato");
-  }catch(e){
-    try{ window.open(URL.createObjectURL(blob), "_blank"); toast("Aperto in una nuova scheda"); }
-    catch(e2){ toast("Download non disponibile qui"); }
-  }
-}
-function baseNome(){
-  const ev = sheet && sheet.tipo === "locandina" ? EV(sheet.id) : null;
-  const t = ev ? C().name + " " + ev.name : C().name + " classifica";
-  return t.normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .replace(/[^\w\s-]/g,"").trim().replace(/\s+/g,"-").toLowerCase();
-}
-async function pagineBlob(){
-  return Promise.all(LOCA.map(cv => new Promise(r => cv.toBlob(r, "image/png"))));
-}
-async function locaSave(fmt){
-  if(!LOCA.length || !sheet){ toast("Immagine non pronta"); return; }
-  const base = baseNome();
-  if(fmt === "png"){
-    const blobs = await pagineBlob();
-    for(let i=0; i<blobs.length; i++)
-      await offriFile(base + (blobs.length > 1 ? "-" + (i+1) : "") + ".png", blobs[i]);
-  } else {
-    const J = window.jspdf && window.jspdf.jsPDF;
-    if(!J){ toast("PDF non disponibile, scarica l'immagine"); return; }
-    let doc = null;
-    LOCA.forEach((cv, i) => {
-      if(i === 0) doc = new J({orientation:"p", unit:"px", format:[cv.width, cv.height], compress:true});
-      else doc.addPage([cv.width, cv.height], "p");
-      doc.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, cv.width, cv.height);
-    });
-    await offriFile(base + ".pdf", doc.output("blob"));
-  }
-}
-async function locaShare(){
-  if(!LOCA.length) return;
-  const base = baseNome();
-  const blobs = await pagineBlob();
-  const files = blobs.map((b,i) => new File([b], base + (blobs.length > 1 ? "-" + (i+1) : "") + ".png", {type:"image/png"}));
-  if(navigator.canShare && navigator.canShare({files})){
-    try{ await navigator.share({files}); return; }
-    catch(e){ if(e && e.name === "AbortError") return; }
-  }
-  toast("Condivisione non disponibile: scarica le immagini");
-}
-function setLogo(file){
-  if(!file) return;
-  const r = new FileReader();
-  r.onload = () => {
-    const i = new Image();
-    i.onload = () => {
-      const s = 320, ar = i.width / i.height;
-      const cv = document.createElement("canvas");
-      cv.width = ar >= 1 ? s : Math.round(s*ar);
-      cv.height = ar >= 1 ? Math.round(s/ar) : s;
-      cv.getContext("2d").drawImage(i, 0, 0, cv.width, cv.height);
-      D.settings.logo = cv.toDataURL("image/png");
-      save(); render(); toast("Logo caricato");
-    };
-    i.onerror = () => toast("Immagine non valida");
-    i.src = r.result;
-  };
-  r.readAsDataURL(file);
-}
-
-/* ---------- testo e backup ---------- */
-function testoClassifica(){
-  const c = C(), l = classifica().filter(r => r.pres > 0);
-  return [c.name, "Classifica generale", ""]
-    .concat(l.map((r,i) => `${i+1}. ${r.name} — ${r.tot} pt (${r.pres} pres.)`)).join("\n");
-}
-function testoEvento(ev){
-  const pts = eventPoints(ev);
-  return [C().name, ev.name + " · " + dataIt(ev.date), ""]
-    .concat(placements(ev).map((pi,k) => {
-      const pr = ev.pairs[pi];
-      return `${k+1}. ${nm(pr[0])} e ${nm(pr[1])} — ${pts[pr[0]]||0} pt`;
-    })).join("\n");
-}
-function copia(txt){
-  if(navigator.clipboard && navigator.clipboard.writeText)
-    navigator.clipboard.writeText(txt).then(()=>toast("Copiato")).catch(()=>fallback(txt));
-  else fallback(txt);
-}
-function fallback(txt){
-  const ta = document.createElement("textarea");
-  ta.value = txt; ta.style.position="fixed"; ta.style.opacity="0";
-  document.body.appendChild(ta); ta.select();
-  try{ document.execCommand("copy"); toast("Copiato"); }catch(e){ toast("Copia non riuscita"); }
-  ta.remove();
-}
-async function doExport(){
-  const blob = new Blob([JSON.stringify(D, null, 1)], {type:"application/json"});
-  await offriFile("mundialito-" + oggi() + ".json", blob);
-}
-function doImport(file){
-  if(!file) return;
-  const r = new FileReader();
-  r.onload = () => {
-    try{
-      const d = JSON.parse(r.result);
-      if(!d || !d.players || !d.champs) throw 0;
-      if(!confirm("Sostituisco i dati di questo browser con il backup?")) return;
-      D = d; D.settings = D.settings || {campi:5}; D.cur = D.cur || D.champs[0].id;
-      openEvent = null; sheet = null; save(); render(); toast("Backup caricato");
-    }catch(e){ toast("File non valido"); }
-  };
-  r.readAsText(file);
-}
-
-D = load() || fresh();
-normalizzaTornei();
-try{ localStorage.setItem(KEY, JSON.stringify(D)); }catch(e){}
-render();
-initSync();
-</script>
-</body>
-</html>
+  d.albo = (r.albo || []).map(a => ({id:a.id, champ_id:a.champ_id, tipo:a.tipo, edizione:S
