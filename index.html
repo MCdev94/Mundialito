@@ -886,7 +886,10 @@ function renderAltro(){
       <button data-act="cset" data-k="settimane" data-v="1">+</button><small>settimane, 2 giornate ciascuna</small></div>
     <p class="note">${giornateChiuse(c)} giornat${giornateChiuse(c)===1?"a":"e"} su ${giornatePreviste(c)} previste.</p>
     <h2 style="margin-top:18px">Data delle finali (top 8)</h2>
-    <label class="fld" style="max-width:220px"><input type="date" data-act="datafinale" value="${c.dataFinale || ""}" ${canWrite() ? "" : "disabled"}></label>
+    <div class="row2" style="max-width:420px">
+      <label class="fld" style="flex:3"><span>Data</span><input type="date" data-act="datafinale" value="${c.dataFinale || ""}" ${canWrite() ? "" : "disabled"}></label>
+      <label class="fld" style="flex:2"><span>Orario</span><input data-act="orafinale" value="${esc(c.oraFinale || "")}" placeholder="pomeriggio, 15:00" ${canWrite() ? "" : "disabled"}></label>
+    </div>
     <p class="note" style="margin-top:-4px">Compare su tutte le locandine e sull'immagine della classifica.</p>
     <h2 style="margin-top:18px">Giornate già giocate prima dell'app</h2>
     <div class="stepper">
@@ -1173,6 +1176,7 @@ document.addEventListener("input", e => {
     const nota = document.getElementById("bonusNota"); if(nota) nota.textContent = notaBonus(c2, list.filter(r => r.bonus).length);
   }
   if(e.target.matches('[data-act="datafinale"]') && canWrite()){ C().dataFinale = e.target.value || ""; save(); }
+  if(e.target.matches('[data-act="orafinale"]') && canWrite()){ C().oraFinale = e.target.value; save(); }
   if(e.target.matches('[data-act="firma"]') && canWrite()){ D.settings.firma = e.target.value; save(); }
   if(e.target.matches('[data-act="logo"]')) setLogo(e.target.files[0]);
   if(e.target.matches('[data-act="import"]')) doImport(e.target.files[0]);
@@ -1280,7 +1284,8 @@ document.addEventListener("click", e => {
     const seeds = {}; const t = totals(null, c);
     coppie.forEach((pr,i) => seeds[i] = (t[pr[0]] ? t[pr[0]].pts : 0) + (t[pr[1]] ? t[pr[1]].pts : 0));
     const id = uid();
-    c.events.push({id, created:Date.now(), name:"Finale a 8", date:c.dataFinale || oggi(), ora:"", mult:1, campi:2,
+    c.events.push({id, created:Date.now(), name:"Finale a 8", date:c.dataFinale || oggi(),
+      ora:/^\d/.test((c.oraFinale || "").trim()) ? c.oraFinale.trim() : "", mult:1, campi:2,
       finale:true, status:"bozza", presenti:ids, pairs:coppie, seeds,
       matches:[{pa:0, pb:1, winner:null}, {pa:2, pb:3, winner:null}],
       storico:[], ordine:null, punti:null});
@@ -1497,9 +1502,16 @@ function disegnaStelle(x, tipi, X, cy, r, bordo){
   });
   return larghezzaStelle(tipi.length, r);
 }
+function orarioFinali(ch){
+  const o = (ch.oraFinale || "").trim();
+  if(!o) return "";
+  return /^\d/.test(o) ? "ore " + o : o;
+}
 function testoFinali(ch){
   const d = ch.dataFinale || ((finaleDi(ch) || {}).date) || "";
-  return d ? dataLunga({date:d}) : "";
+  if(!d) return "";
+  const o = orarioFinali(ch);
+  return dataLunga({date:d}) + (o ? " · " + o : "");
 }
 
 async function drawClassifica(ch){
@@ -1556,46 +1568,29 @@ async function drawClassifica(ch){
     x.fillText("A CLASSIFICA SINGOLA", 1040 + 0.14*140, 140);
     x.restore();
 
-    /* settimane a sinistra */
-    const sett = ch.settimane || 8, fatte = Math.floor(giornateChiuse(ch) / 2);
-    x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = CL.tenue;
-    x.font = "600 20px Archivo, Arial";
-    x.fillText(String(sett), 168, 186); x.fillText("SETTIMANE", 168, 210);
-    const perRiga = Math.ceil(sett / 2);
-    for(let i=0; i<sett; i++){
-      const cx = 168 - (perRiga-1)*22 + (i % perRiga) * 44;
-      const cy = 246 + Math.floor(i / perRiga) * 38;
-      const ultimo = i === sett - 1;
-      if(ultimo && (fin || dataF)){
-        rrect(x, cx-17, cy-14, 34, 28, 7); x.fillStyle = CL.verde; x.fill();
-        x.fillStyle = CL.testo; x.font = "700 16px Archivo, Arial"; x.fillText("F8", cx, cy);
-      } else if(i < fatte){
-        x.beginPath(); x.arc(cx, cy, 8, 0, Math.PI*2); x.fillStyle = CL.testo; x.fill();
-      } else {
-        x.strokeStyle = "#7E5BD6"; x.lineWidth = 3.5;
-        x.beginPath(); x.moveTo(cx-9, cy-9); x.lineTo(cx+9, cy+9);
-        x.moveTo(cx+9, cy-9); x.lineTo(cx-9, cy+9); x.stroke();
-      }
-      x.font = "600 20px Archivo, Arial";
-    }
-    x.strokeStyle = "rgba(255,255,255,.25)"; x.lineWidth = 2;
-    x.beginPath(); x.moveTo(300, 168); x.lineTo(300, 296); x.stroke();
-
-    /* finali in calendario, al centro dell'intestazione */
+    /* barra informazioni: a sinistra la giornata, a destra le finali */
+    const sett = ch.settimane || 8;
+    const iy = 182, ih = 100;
+    const gw = dataF ? 320 : 440, gx = dataF ? 40 : (W - gw) / 2;
+    rrect(x, gx, iy, gw, ih, 24);
+    x.fillStyle = "rgba(103,199,245,.10)"; x.fill();
+    x.strokeStyle = "rgba(103,199,245,.55)"; x.lineWidth = 2; rrect(x, gx, iy, gw, ih, 24); x.stroke();
+    const numero = giornateChiuse(ch) + "ª";
+    x.font = "800 64px Archivo, Arial"; const wNum = x.measureText(numero).width;
+    x.font = "700 24px Archivo, Arial"; const wLab = x.measureText("GIORNATA").width;
+    const sx = gx + (gw - (wNum + 14 + wLab)) / 2;
+    x.textBaseline = "middle"; x.textAlign = "left";
+    x.fillStyle = "#67C7F5"; x.font = "800 64px Archivo, Arial"; x.fillText(numero, sx, iy + ih/2 + 3);
+    x.fillStyle = CL.testo;   x.font = "700 24px Archivo, Arial"; x.fillText("GIORNATA", sx + wNum + 14, iy + ih/2 + 4);
     if(dataF){
-      const bx = 360, bw = 420, by = 168, bh = 118;
-      rrect(x, bx, by, bw, bh, 18); x.fillStyle = CL.verde; x.fill();
-      x.strokeStyle = CL.verdeChiaro; x.lineWidth = 2; rrect(x, bx, by, bw, bh, 18); x.stroke();
-      x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = CL.testo;
-      fitFont(x, "FINALS TOP 8", bw - 40, "800", 34, 18); x.fillText("FINALS TOP 8", bx + bw/2, by + 40);
-      x.fillStyle = "#F3D27A"; fitFont(x, dataF.toUpperCase(), bw - 40, "700", 26, 14);
-      x.fillText(dataF.toUpperCase(), bx + bw/2, by + 82);
+      const fx = gx + gw + 24, fw = 1040 - fx;
+      rrect(x, fx, iy, fw, ih, 24); x.fillStyle = CL.verde; x.fill();
+      x.strokeStyle = CL.verdeChiaro; x.lineWidth = 2; rrect(x, fx, iy, fw, ih, 24); x.stroke();
+      x.textAlign = "center"; x.fillStyle = CL.testo;
+      fitFont(x, "FINALS TOP 8", fw - 48, "800", 34, 18); x.fillText("FINALS TOP 8", fx + fw/2, iy + 36);
+      x.fillStyle = "#F3D27A"; fitFont(x, dataF.toUpperCase(), fw - 48, "700", 26, 14);
+      x.fillText(dataF.toUpperCase(), fx + fw/2, iy + 72);
     }
-
-    /* giornata a destra */
-    x.textAlign = "right"; x.fillStyle = "#67C7F5"; x.font = "600 20px Archivo, Arial";
-    x.fillText(giornateChiuse(ch) + "°", 1040, 186);
-    x.fillText("GIORNATA", 1040, 210);
 
     /* colonne */
     const Wc = 440, Xsx = 40, Xdx = 600;
@@ -1616,9 +1611,11 @@ async function drawClassifica(ch){
       const dF = ch.dataFinale || (fin && fin.date) || "";
       fitFont(x, dataIt(dF), Wc, "800", 42, 20);
       x.fillText(dataIt(dF), Xdx + Wc/2, HEAD + 235);
+      if(orarioFinali(ch)){ x.fillStyle = "#F3D27A"; fitFont(x, orarioFinali(ch).toUpperCase(), Wc, "700", 26, 14);
+        x.fillText(orarioFinali(ch).toUpperCase(), Xdx + Wc/2, HEAD + 272); x.fillStyle = CL.testo; }
       x.fillStyle = CL.tenue; x.font = "600 22px Archivo, Arial";
-      x.fillText("I migliori 8 giocatori si", Xdx + Wc/2, HEAD + 300);
-      x.fillText("sfideranno al tabellone F8", Xdx + Wc/2, HEAD + 330);
+      x.fillText("I migliori 8 giocatori si", Xdx + Wc/2, HEAD + 316);
+      x.fillText("sfideranno al tabellone F8", Xdx + Wc/2, HEAD + 346);
     }
 
     /* legenda */
@@ -1654,7 +1651,4 @@ const VERSIONE_DATI = 3;   // deve combaciare con il controllo "v >= 3" sul data
 let SB = null, SESSION = null, QUEUE = [], SNAP = null, flushing = false;
 let SYNC = {stato:"avvio", msg:""};
 
-const ls = (k,v) => { try{ return v === undefined ? localStorage.getItem(k) : (v === null ? localStorage.removeItem(k) : localStorage.setItem(k,v)); }catch(e){ return null; } };
-const canWrite = () => !!SESSION || ls(GKEY) === "1";   // permesso nell'interfaccia
-const canSync  = () => !!SB && !!SESSION;               // permesso di scrivere sul database
-const
+const ls = (k,v) => { try{ return v === undefined ? localStorage.getItem(k) : (v === null ? localStorage.removeItem(
