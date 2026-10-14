@@ -33,6 +33,7 @@ Gli script sono normali file JavaScript che condividono lo stesso ambiente e van
 - **Versione dei dati**: ogni riga mandata al database porta `v = VERSIONE_DATI` (in `08-sync.js`). Il database rifiuta le righe con `v` mancante o minore di 3: è il blocco che impedisce a versioni vecchie dell'app di sovrascrivere dati buoni. Se un giorno cambia il formato dei dati, si alzano insieme `VERSIONE_DATI` e il controllo `v >= …` sul database.
 - **Il telefono del gestore comanda solo se è già sincronizzato**: un dispositivo che non ha mai completato una sincronizzazione butta la sua coda e prende i dati dal database. È la regola che protegge i dati quando il gestore cambia telefono.
 - **Il bonus non si scrive nei punti**: nel database restano i punti fatti in campo; il bonus si applica sopra con soglia e punti del riquadro BONUS. Così cambiando i numeri o annullando una giornata tutto si ricalcola giusto.
+- **Albo storico**: la prima edizione maschile mostra Roberto Regini e De Tommaso Walter anche se la relativa riga non è ancora presente nel database. Un'eventuale registrazione ufficiale della stessa edizione sostituisce automaticamente la voce storica, senza duplicarla.
 
 ## Test
 

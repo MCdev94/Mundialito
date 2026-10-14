@@ -134,7 +134,7 @@ function renderSheet(){
   }
 
   if(sheet.tipo === "campioni" || sheet.tipo === "albovoce"){
-    const a = (D.albo || []).find(x => x.id === sheet.id);
+    const a = voceAlbo(sheet.id);
     if(!a){ sheet = null; return; }
     const ch = D.champs.find(c => c.type === a.tipo);
     inner = `<div class="festa">
@@ -148,7 +148,7 @@ function renderSheet(){
       </div>
       <div class="block">
         <button class="btn" data-act="closesheet">${sheet.tipo === "campioni" ? "Fantastico" : "Chiudi"}</button>
-        ${sheet.tipo === "albovoce" && canWrite() ? `<button class="btn btn--danger" data-act="albotogli" data-id="${a.id}">Togli dall'albo d'oro</button>` : ""}
+        ${sheet.tipo === "albovoce" && canWrite() && (D.albo || []).some(x => x.id === a.id) ? `<button class="btn btn--danger" data-act="albotogli" data-id="${a.id}">Togli dall'albo d'oro</button>` : ""}
       </div>`;
   }
 

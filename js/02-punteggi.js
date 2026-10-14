@@ -131,7 +131,36 @@ function normalizzaTornei(){
   return cambiato;
 }
 /* --- albo d'oro --- */
-function vittorieDi(id){ return (D.albo || []).filter(a => (a.giocatori || []).includes(id)); }
+/* Le edizioni precedenti all'albo digitale restano visibili anche se non sono ancora
+   state salvate su Supabase. Una voce registrata dall'interfaccia per lo stesso
+   torneo e la stessa edizione prende sempre il posto di quella storica. */
+const ALBO_STORICO = [
+  {id:"storico-maschile-1", tipo:"maschile", edizione:"1", data:"",
+   nomi:["Roberto Regini", "De Tommaso Walter"]}
+];
+function chiaveNome(s){
+  return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+function chiaveNomeLibera(s){ return chiaveNome(s).split(" ").filter(Boolean).sort().join(" "); }
+function giocatorePerNome(nome){
+  const esatta = chiaveNome(nome), libera = chiaveNomeLibera(nome);
+  return D.players.find(p => chiaveNome(p.name) === esatta)
+    || D.players.find(p => chiaveNomeLibera(p.name) === libera)
+    || null;
+}
+function alboCompleto(){
+  const salvato = D.albo || [];
+  const presenti = new Set(salvato.map(a => a.tipo + "|" + String(a.edizione)));
+  const storico = ALBO_STORICO.filter(a => !presenti.has(a.tipo + "|" + String(a.edizione))).map(a => ({
+    ...a,
+    champ_id:(D.champs.find(c => c.type === a.tipo) || {}).id || null,
+    giocatori:a.nomi.map(nome => { const p = giocatorePerNome(nome); return p ? p.id : null; })
+  }));
+  return salvato.concat(storico);
+}
+function voceAlbo(id){ return alboCompleto().find(a => a.id === id) || null; }
+function vittorieDi(id){ return alboCompleto().filter(a => (a.giocatori || []).includes(id)); }
 /* una stella per vittoria: blu maschile, rosa femminile, metà e metà misto */
 const ORDINE_TIPI = {maschile:0, femminile:1, misto:2};
 function stelle(id){
@@ -144,7 +173,7 @@ function stelle(id){
 }
 function nomeAlbo(a, i){ const id = (a.giocatori || [])[i]; const p = id && D.players.find(x => x.id === id); return p ? p.name : ((a.nomi || [])[i] || "?"); }
 function albumDi(ch){
-  return (D.albo || []).filter(a => a.tipo === ch.type)
+  return alboCompleto().filter(a => a.tipo === ch.type)
     .sort((x,y) => (parseInt(y.edizione,10) || 0) - (parseInt(x.edizione,10) || 0));
 }
 function vincitoreFinale(ev){

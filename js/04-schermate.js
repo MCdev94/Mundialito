@@ -281,7 +281,7 @@ function tabellaClassifica(list){
   if(!list.length) return `<p class="empty">Ancora nessuna giornata chiusa qui.</p>`;
   return `<table class="table"><thead><tr><th>Giocatore</th><th>Punti</th><th>Presenze</th></tr></thead>
    <tbody>${list.map((r,i) => `<tr class="rowtap ${i===0?"lead":""}" data-act="player" data-id="${r.id}">
-      <td><span class="nmc"><span class="pos">${i+1}</span><span class="${r.bonus?"conbonus":""}">${esc(r.name)}</span></span></td>
+      <td><span class="nmc"><span class="pos">${i+1}</span><span class="${r.bonus?"conbonus":""}">${esc(r.name)} ${stelle(r.id)}</span></span></td>
       <td class="pts">${r.tot}</td>
       <td>${r.pres}</td></tr>`).join("")}</tbody></table>`;
 }
@@ -296,7 +296,7 @@ function renderGiocatori(){
   <header class="top">${champBtn()}
     <div class="top__row"><div><h1 class="top__title">Giocatori</h1>
     <p class="top__meta">${list.length} disponibili per questo campionato${fuori?` · ${fuori} ritirati`:""}</p>
-    ${(D.albo || []).length ? `<p class="legenda"><span><span class="stella stella--maschile">★</span> Maschile</span>
+    ${alboCompleto().length ? `<p class="legenda"><span><span class="stella stella--maschile">★</span> Maschile</span>
       <span><span class="stella stella--femminile">★</span> Femminile</span>
       <span><span class="stella stella--misto">★</span> Misto</span></p>` : ""}</div></div></header>
   <label class="fld"><input id="q" placeholder="Cerca un nome" value="${esc(search)}" data-act="search" autocomplete="off"></label>

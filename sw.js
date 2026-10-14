@@ -2,7 +2,7 @@
    I file dell'app: prima la rete (così gli aggiornamenti arrivano subito), poi la copia salvata.
    Librerie e font esterni: copia salvata, aggiornata in background.
    I dati di Supabase non passano mai di qui: li gestisce l'app con la sua coda. */
-const VERSIONE = "mundialito-2026-10-07";
+const VERSIONE = "mundialito-2026-10-14-1";
 const ESTERNI = "mundialito-esterni";
 const GUSCIO = [
   "./", "./index.html", "./css/style.css", "./manifest.webmanifest",
