@@ -1,4 +1,4 @@
-/* Mundialito — Disegno delle schermate: giornate, giornata, classifica, giocatori, altro */
+/* Goné Padel Cup — Disegno delle schermate: giornate, giornata, classifica, giocatori, altro */
 "use strict";
 /* ============================ RENDER ============================ */
 function render(){

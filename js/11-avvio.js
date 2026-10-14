@@ -1,4 +1,4 @@
-/* Mundialito — Avvio dell'app */
+/* Goné Padel Cup — Avvio dell'app */
 "use strict";
 
 D = load() || fresh();

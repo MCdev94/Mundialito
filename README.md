@@ -1,6 +1,6 @@
-# Mundialito
+# Goné Padel Cup
 
-Gestione del Mundialito del Torneo Roby – Gonetta: giornate, tabelloni, classifiche, bonus presenze, finali a 8 e albo d'oro, per i tornei maschile, femminile e misto.
+Gestione della Goné Padel Cup: giornate, tabelloni, classifiche, bonus presenze, finali a 8 e albo d'oro, per i tornei maschile, femminile e misto.
 
 App statica pubblicata con GitHub Pages, dati su Supabase. Nessuna compilazione: i file del repository sono esattamente quelli che il browser carica.
 

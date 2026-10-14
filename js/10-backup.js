@@ -1,4 +1,4 @@
-/* Mundialito — Testi da copiare, esportazione e importazione del backup */
+/* Goné Padel Cup — Testi da copiare, esportazione e importazione del backup */
 "use strict";
 /* ---------- testo e backup ---------- */
 function testoClassifica(){
@@ -28,7 +28,7 @@ function fallback(txt){
 }
 async function doExport(){
   const blob = new Blob([JSON.stringify(D, null, 1)], {type:"application/json"});
-  await offriFile("mundialito-" + oggi() + ".json", blob);
+  await offriFile("gone-padel-cup-" + oggi() + ".json", blob);
 }
 function doImport(file){
   if(!file) return;

@@ -1,7 +1,7 @@
 {
-  "name": "mundialito",
+  "name": "gone-padel-cup",
   "private": true,
-  "description": "Gestione del Mundialito: giornate, classifiche, finali e albo d'oro.",
+  "description": "Gestione della Goné Padel Cup: giornate, classifiche, finali e albo d'oro.",
   "scripts": {
     "test": "node --test \"tests/*.test.mjs\""
   }

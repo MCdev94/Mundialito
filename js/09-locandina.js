@@ -1,4 +1,4 @@
-/* Mundialito — Locandina del tabellone, salvataggio e condivisione delle immagini */
+/* Goné Padel Cup — Locandina del tabellone, salvataggio e condivisione delle immagini */
 "use strict";
 /* ---------- locandina ---------- */
 let LOCA = [];   // pagine da scaricare (locandina o classifica)

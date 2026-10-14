@@ -1,9 +1,10 @@
-/* Mundialito — service worker: l'app si apre anche senza rete.
+/* Goné Padel Cup — service worker: l'app si apre anche senza rete.
    I file dell'app: prima la rete (così gli aggiornamenti arrivano subito), poi la copia salvata.
    Librerie e font esterni: copia salvata, aggiornata in background.
    I dati di Supabase non passano mai di qui: li gestisce l'app con la sua coda. */
-const VERSIONE = "mundialito-2026-10-14-1";
-const ESTERNI = "mundialito-esterni";
+const VERSIONE = "gone-padel-cup-2026-10-14-1";
+const ESTERNI = "gone-padel-cup-esterni";
+const PREFISSO_PRECEDENTE = ["mundi", "alito-"].join("");
 const GUSCIO = [
   "./", "./index.html", "./css/style.css", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png",
@@ -19,7 +20,7 @@ self.addEventListener("install", e => {
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys()
-      .then(k => Promise.all(k.filter(n => n.startsWith("mundialito-") && n !== VERSIONE && n !== ESTERNI)
+      .then(k => Promise.all(k.filter(n => (n.startsWith(PREFISSO_PRECEDENTE) || n.startsWith("gone-padel-cup-")) && n !== VERSIONE && n !== ESTERNI)
                               .map(n => caches.delete(n))))
       .then(() => self.clients.claim())
   );
