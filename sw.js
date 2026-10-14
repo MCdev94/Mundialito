@@ -2,7 +2,7 @@
    I file dell'app: prima la rete (così gli aggiornamenti arrivano subito), poi la copia salvata.
    Librerie e font esterni: copia salvata, aggiornata in background.
    I dati di Supabase non passano mai di qui: li gestisce l'app con la sua coda. */
-const VERSIONE = "gone-padel-cup-2026-10-14-1";
+const VERSIONE = "gone-padel-cup-2026-10-14-2";
 const ESTERNI = "gone-padel-cup-esterni";
 const PREFISSO_PRECEDENTE = ["mundi", "alito-"].join("");
 const GUSCIO = [
