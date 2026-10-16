@@ -1,4 +1,4 @@
-/* Goné Padel Cup — Immagine della classifica e stelline disegnate */
+/* Mundialito — Immagine della classifica e stelline disegnate */
 "use strict";
 /* ---------- immagine della classifica ---------- */
 const CL = {
@@ -205,7 +205,7 @@ async function drawClassifica(ch){
     x.textAlign = "center"; x.fillStyle = "rgba(255,255,255,.45)";
     x.font = "600 22px Archivo, Arial";
     if(x.letterSpacing !== undefined) x.letterSpacing = "6px";
-    x.fillText(D.settings.firma || "Goné Padel Cup", W/2, H - 34);
+    x.fillText(D.settings.firma || "Gonetta Go", W/2, H - 34);
     if(x.letterSpacing !== undefined) x.letterSpacing = "0px";
 
     pagine.push(cv);

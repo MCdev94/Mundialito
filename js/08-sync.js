@@ -1,4 +1,4 @@
-/* Goné Padel Cup — Sincronizzazione con Supabase: coda, regole, accesso gestore */
+/* Mundialito — Sincronizzazione con Supabase: coda, regole, accesso gestore */
 "use strict";
 /* ---------- sincronizzazione Supabase ---------- */
 const SB_URL = "https://fmjraciijqjelnthxwhq.supabase.co";

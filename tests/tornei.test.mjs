@@ -14,7 +14,7 @@ test("restano sempre esattamente tre tornei, uno per tipo", () => {
   const a = app([]);
   assert.deepEqual(a.run("D.champs.map(c => c.type)"), ["maschile", "femminile", "misto"]);
   assert.deepEqual(a.run("D.champs.map(c => c.name)"),
-    ["Goné Padel Cup Maschile", "Goné Padel Cup Femminile", "Goné Padel Cup Misto"]);
+    ["Mundialito Maschile", "Mundialito Femminile", "Mundialito Misto"]);
 });
 
 test("un doppione vuoto viene eliminato", () => {

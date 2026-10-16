@@ -1,4 +1,4 @@
-/* Goné Padel Cup — Punteggi, bonus, classifica, tornei e albo d'oro */
+/* Mundialito — Punteggi, bonus, classifica, tornei e albo d'oro */
 "use strict";
 /* ---------- punteggi ---------- */
 function ordineDaTabellone(ev){
@@ -70,7 +70,7 @@ function eventPoints(ev){
 }
 const matchDone = m => (m.pb === null || m.pb === undefined) || m.winner === "a" || m.winner === "b";
 const evReady = ev => ev.matches.length > 0 && ev.matches.every(matchDone);
-const TORNEI = [["maschile","Goné Padel Cup Maschile",8], ["femminile","Goné Padel Cup Femminile",4], ["misto","Goné Padel Cup Misto",5]];
+const TORNEI = [["maschile","Mundialito Maschile",8], ["femminile","Mundialito Femminile",4], ["misto","Mundialito Misto",5]];
 function pesoTorneo(c){ return Object.keys(c.carry || {}).length + (c.events || []).length * 10 + (c.base || 0); }
 function firmaCarry(c){
   return Object.keys(c.carry || {}).map(id => {

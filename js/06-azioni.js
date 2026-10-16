@@ -1,4 +1,4 @@
-/* Goné Padel Cup — Gestione di tocchi, moduli e campi di testo */
+/* Mundialito — Gestione di tocchi, moduli e campi di testo */
 "use strict";
 /* ============================ AZIONI ============================ */
 tabsEl.addEventListener("click", e => {
@@ -84,7 +84,7 @@ document.addEventListener("click", e => {
     sheet.tmp[k] = Math.max(lim[0], Math.min(lim[1], sheet.tmp[k] + (+el.dataset.v))); render(); return;
   }
   if(a === "savechamp"){
-    const name = (document.getElementById("ch_name").value || "").trim() || "Goné Padel Cup " + tipoLabel(sheet.tmp.type);
+    const name = (document.getElementById("ch_name").value || "").trim() || "Mundialito " + tipoLabel(sheet.tmp.type).toLowerCase();
     const ed = "";
     const id = uid();
     D.champs.push({id, name, ed, type:sheet.tmp.type, soglia:sheet.tmp.soglia, bonus:sheet.tmp.bonus,

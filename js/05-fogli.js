@@ -1,4 +1,4 @@
-/* Goné Padel Cup — Pannelli a comparsa: tornei, giocatore, giornata, decreto campioni, stampe */
+/* Mundialito — Pannelli a comparsa: tornei, giocatore, giornata, decreto campioni, stampe */
 "use strict";
 /* --- fogli --- */
 function renderSheet(){
@@ -18,7 +18,7 @@ function renderSheet(){
   if(sheet.tipo === "newchamp"){
     const t = sheet.tmp;
     inner = `<h3>Nuovo campionato</h3>
-      <label class="fld"><span>Nome</span><input id="ch_name" value="${esc(t.name)}" placeholder="Goné Padel Cup Maschile"></label>
+      <label class="fld"><span>Nome</span><input id="ch_name" value="${esc(t.name)}" placeholder="Mundialito maschile"></label>
       <div class="block" style="margin-top:0"><h2>Tipo</h2><div class="chips">
         ${["maschile","femminile","misto"].map(x=>`<button class="chip" data-act="chtype" data-v="${x}" aria-pressed="${t.type===x}">${tipoLabel(x)}</button>`).join("")}
       </div></div>

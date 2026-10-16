@@ -1,8 +1,7 @@
-/* Goné Padel Cup — Stato condiviso, utilità, salvataggio locale */
+/* Mundialito — Stato condiviso, utilità, salvataggio locale */
 "use strict";
 const SEED = null;   // i dati stanno nel database: un dispositivo nuovo li scarica al primo avvio
-/* Identificatore storico mantenuto per non perdere i dati già salvati sui telefoni. */
-const KEY = ["mundi", "alito.v2"].join("");
+const KEY = "mundialito.v2";
 const app = document.getElementById("app");
 const tabsEl = document.getElementById("tabs");
 
@@ -44,7 +43,7 @@ function fresh(){
     Object.keys(c.carry || {}).forEach(n => { if(byName[n]) ch.carry[byName[n]] = c.carry[n]; });
     d.champs.push(ch);
   });
-  if(!d.champs.length) d.champs.push({id:uid(), name:"Goné Padel Cup Maschile", ed:"1ª edizione", type:"maschile",
+  if(!d.champs.length) d.champs.push({id:uid(), name:"Mundialito", ed:"1ª edizione", type:"maschile",
     soglia:8, bonus:5, carry:{}, events:[]});
   d.cur = d.champs[0].id;
   return d;
