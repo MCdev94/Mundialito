@@ -238,7 +238,11 @@ function renderClassifica(){
   app.innerHTML = `
   <header class="top">${champBtn()}
     <div class="top__row"><div><h1 class="top__title">Classifica</h1>
-    <p class="top__meta">${giornateChiuse(c)} giornat${giornateChiuse(c)===1?"a":"e"} su ${giornatePreviste(c)}</p></div></div></header>
+    <p class="top__meta">${giornateChiuse(c)} giornat${giornateChiuse(c)===1?"a":"e"} su ${giornatePreviste(c)}</p></div>
+    <button type="button" class="aggiorna-classifica" data-act="sync" aria-label="Aggiorna classifica"
+      title="Aggiorna classifica" aria-busy="${SYNC.stato === "corso"}" ${SYNC.stato === "corso" ? "disabled" : ""}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17"/></svg>
+    </button></div></header>
 
   <section class="bonus">
     <h2 class="bonus__t">BONUS</h2>
