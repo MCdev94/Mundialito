@@ -34,11 +34,11 @@ function rigaClass(x, X, Y, W, H, dati, verde){
   x.textAlign = "center"; fitFont(x, String(dati.pts), 66, "700", s, 13);
   x.fillText(String(dati.pts), X + W - 36, cy);
 }
-function intestaCol(x, X, W, Y){
+function intestaCol(x, X, W, Y, ch){
   x.fillStyle = CL.tenue; x.textBaseline = "middle";
   x.font = "600 21px Archivo, Arial";
   x.textAlign = "center"; x.fillText("#", X + 34, Y);
-  x.textAlign = "left";   x.fillText("GIOCATORE", X + 64, Y);
+  x.textAlign = "left";   x.fillText(partecipanti(ch, false).toUpperCase(), X + 64, Y);
   x.textAlign = "center"; x.fillText("PL", X + W - 96, Y);
   x.fillText("PTS", X + W - 36, Y);
 }
@@ -87,8 +87,8 @@ function testoFinali(ch){
 
 async function drawClassifica(ch){
   ch = ch || C();
-  const lista = classifica(ch).filter(r => r.pres > 0)
-    .map((r,i) => ({id:r.id, pos:i+1, nome:r.name.toUpperCase(), pl:r.pres, pts:r.tot}));
+  const lista = classificaFinal8(ch)
+    .map(r => ({id:r.id, pos:r.pos, final8:r.final8, nome:r.name.toUpperCase(), pl:r.pres, pts:r.tot}));
   if(!lista.length) throw new Error("classifica vuota");
   const dataF = testoFinali(ch);
 
@@ -102,11 +102,10 @@ async function drawClassifica(ch){
   const fin = finaleDi(ch);
   const pagine = [];
   const blocchi = [];
-  if(lista.length <= 20) blocchi.push({sx:lista.slice(0,8), dx:lista.slice(8,20)});
-  else {
-    blocchi.push({sx:lista.slice(0,8), dx:lista.slice(8,20)});
-    for(let i=20; i<lista.length; i+=26) blocchi.push({sx:lista.slice(i,i+13), dx:lista.slice(i+13,i+26)});
-  }
+  const finalisti = lista.filter(r => r.final8), resto = lista.filter(r => !r.final8);
+  blocchi.push({sx:finalisti, dx:resto.slice(0,12)});
+  for(let i=12; i<resto.length; i+=26)
+    blocchi.push({sx:resto.slice(i,i+13), dx:resto.slice(i+13,i+26)});
 
   blocchi.forEach((bl, idx) => {
     const W = 1080, HEAD = 356, LEG = 150;
@@ -158,15 +157,15 @@ async function drawClassifica(ch){
       rrect(x, fx, iy, fw, ih, 24); x.fillStyle = CL.verde; x.fill();
       x.strokeStyle = CL.verdeChiaro; x.lineWidth = 2; rrect(x, fx, iy, fw, ih, 24); x.stroke();
       x.textAlign = "center"; x.fillStyle = CL.testo;
-      fitFont(x, "FINALS TOP 8", fw - 48, "800", 34, 18); x.fillText("FINALS TOP 8", fx + fw/2, iy + 36);
+      fitFont(x, "Final 8", fw - 48, "800", 34, 18); x.fillText("Final 8", fx + fw/2, iy + 36);
       x.fillStyle = "#F3D27A"; fitFont(x, dataF.toUpperCase(), fw - 48, "700", 26, 14);
       x.fillText(dataF.toUpperCase(), fx + fw/2, iy + 72);
     }
 
     /* colonne */
     const Wc = 440, Xsx = 40, Xdx = 600;
-    intestaCol(x, Xsx, Wc, 324); if(bl.dx.length) intestaCol(x, Xdx, Wc, 324);
-    bl.sx.forEach((r,i) => rigaClass(x, Xsx, HEAD + i*hSx, Wc, hSx - 8, r, primaPag && r.pos <= 8));
+    intestaCol(x, Xsx, Wc, 324, ch); if(bl.dx.length) intestaCol(x, Xdx, Wc, 324, ch);
+    bl.sx.forEach((r,i) => rigaClass(x, Xsx, HEAD + i*hSx, Wc, hSx - 8, r, r.final8));
     bl.dx.forEach((r,i) => rigaClass(x, Xdx, HEAD + i*hDx, Wc, hDx - 8, r, false));
     if(bl.dx.length || conFinale){
       x.strokeStyle = "rgba(255,255,255,.22)"; x.lineWidth = 2;
@@ -176,7 +175,7 @@ async function drawClassifica(ch){
     /* riquadro finale nell'ultima pagina, se c'è spazio */
     if(conFinale){
       x.textAlign = "center"; x.fillStyle = CL.testo;
-      fitFont(x, "FINALS", Wc, "800", 54, 24); x.fillText("FINALS", Xdx + Wc/2, HEAD + 110);
+      fitFont(x, "Final 8", Wc, "800", 54, 24); x.fillText("Final 8", Xdx + Wc/2, HEAD + 110);
       fitFont(x, ch.name.toUpperCase(), Wc, "800", 42, 20);
       x.fillText(ch.name.toUpperCase(), Xdx + Wc/2, HEAD + 175);
       const dF = ch.dataFinale || (fin && fin.date) || "";
@@ -185,17 +184,21 @@ async function drawClassifica(ch){
       if(orarioFinali(ch)){ x.fillStyle = "#F3D27A"; fitFont(x, orarioFinali(ch).toUpperCase(), Wc, "700", 26, 14);
         x.fillText(orarioFinali(ch).toUpperCase(), Xdx + Wc/2, HEAD + 272); x.fillStyle = CL.testo; }
       x.fillStyle = CL.tenue; x.font = "600 22px Archivo, Arial";
-      x.fillText("I migliori 8 giocatori si", Xdx + Wc/2, HEAD + 316);
-      x.fillText("sfideranno al tabellone F8", Xdx + Wc/2, HEAD + 346);
+      const descrizione = ch.type === "misto" ? "I primi 4 uomini e le prime 4 donne"
+        : ch.type === "femminile" ? "Le migliori 8 giocatrici" : "I migliori 8 giocatori";
+      fitFont(x, descrizione, Wc - 24, "600", 22, 14);
+      x.fillText(descrizione, Xdx + Wc/2, HEAD + 316);
+      x.fillText("si sfideranno nella Final 8", Xdx + Wc/2, HEAD + 346);
     }
 
     /* legenda */
     const Ly = H - LEG + 40;
     rrect(x, 48, Ly - 18, 72, 40, 12); x.fillStyle = CL.verde; x.fill();
     x.textAlign = "left"; x.fillStyle = CL.testo; x.font = "700 28px Archivo, Arial";
-    x.fillText("Qualifica Finals 8", 136, Ly - 4);
+    x.fillText("Qualifica Final 8", 136, Ly - 4);
     x.fillStyle = CL.tenue; x.font = "600 19px Archivo, Arial";
-    x.fillText("al termine delle " + sett + " settimane", 136, Ly + 24);
+    x.fillText(ch.type === "misto" ? "4 uomini + 4 donne · " + sett + " settimane"
+      : "al termine delle " + sett + " settimane", 136, Ly + 24);
     rrect(x, 596, Ly - 18, 72, 40, 12); x.fillStyle = CL.rosso; x.fill();
     x.fillStyle = CL.testo; x.font = "700 28px Archivo, Arial";
     x.fillText("Bonus +" + ch.bonus, 684, Ly - 4);

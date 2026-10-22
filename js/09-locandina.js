@@ -129,7 +129,7 @@ async function drawLocandina(ev){
     const fy = HEAD + n*ROW + 12;
     x.fillStyle = "#16365C"; rrect(x, 130, fy, 820, 62, 10); x.fill();
     x.textAlign = "center"; x.textBaseline = "middle";
-    const tf = "FINALS TOP 8 · " + dataF.toUpperCase();
+    const tf = "Final 8 · " + dataF.toUpperCase();
     x.fillStyle = "#F3D27A"; fitFont(x, tf, 770, "800", 30, 16);
     x.fillText(tf, 540, fy + 32);
   }
@@ -179,14 +179,22 @@ async function locaSave(fmt){
   } else {
     const J = window.jspdf && window.jspdf.jsPDF;
     if(!J){ toast("PDF non disponibile, scarica l'immagine"); return; }
-    let doc = null;
-    LOCA.forEach((cv, i) => {
-      if(i === 0) doc = new J({orientation:"p", unit:"px", format:[cv.width, cv.height], compress:true});
-      else doc.addPage([cv.width, cv.height], "p");
-      doc.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, cv.width, cv.height);
-    });
+    const doc = creaPdf(LOCA, J);
     await offriFile(base + ".pdf", doc.output("blob"));
   }
+}
+function creaPdf(pagine, J){
+  let doc = null;
+  pagine.forEach(cv => {
+    const orientamento = cv.width > cv.height ? "l" : "p";
+    if(!doc) doc = new J({orientation:orientamento, unit:"px", format:[cv.width, cv.height], compress:true});
+    else doc.addPage([cv.width, cv.height], orientamento);
+    const w = doc.internal.pageSize.getWidth(), h = doc.internal.pageSize.getHeight();
+    const scala = Math.min(w / cv.width, h / cv.height);
+    const iw = cv.width * scala, ih = cv.height * scala;
+    doc.addImage(cv.toDataURL("image/png"), "PNG", (w - iw)/2, (h - ih)/2, iw, ih);
+  });
+  return doc;
 }
 async function locaShare(){
   if(!LOCA.length) return;

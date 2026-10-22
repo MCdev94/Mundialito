@@ -140,6 +140,8 @@ button{cursor:pointer;}
 .table .pos{font-size:13px;font-weight:700;font-stretch:112%;color:var(--ink-soft);min-width:20px;}
 .table .pts{font-size:18px;font-weight:700;font-stretch:112%;}
 .table .bn{color:var(--court);font-size:12px;font-weight:700;}
+.table .final8 td{background:#e2f3e9;}
+.table .final8 td:first-child{box-shadow:inset 3px 0 0 #0c5b45;}
 .lead td{background:var(--paper);box-shadow:inset 3px 0 0 var(--ball);}
 .lead td:not(:first-child){box-shadow:none;}
 @supports (background:color-mix(in srgb,red 10%,blue)){

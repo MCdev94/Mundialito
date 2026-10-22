@@ -230,3 +230,26 @@ function classifica(ch){
     return {id:p.id, name:p.name, sex:p.sex, pts:v.campo, pres:v.pres, bonus:v.bonus, tot:v.pts};
   }).sort((a,b) => b.tot - a.tot || b.pres - a.pres || a.name.localeCompare(b.name));
 }
+
+/* Una sola selezione per schermata, stampe e creazione della Final 8. */
+function classificaFinal8(ch = C()){
+  const lista = classifica(ch).filter(r => r.pres > 0);
+  const qualificati = new Set((ch.type === "misto"
+    ? ["M", "F"].flatMap(sesso => lista.filter(r => r.sex === sesso).slice(0, 4))
+    : lista.slice(0, 8)).map(r => r.id));
+  const ordinata = ch.type === "misto"
+    ? [...lista.filter(r => qualificati.has(r.id)), ...lista.filter(r => !qualificati.has(r.id))]
+    : lista;
+  return ordinata.map((r, i) => ({...r, pos:i + 1, final8:qualificati.has(r.id)}));
+}
+function coppieFinal8(ch = C()){
+  const top = classificaFinal8(ch).filter(r => r.final8);
+  if(top.length !== 8) return [];
+  if(ch.type === "misto"){
+    const uomini = top.filter(r => r.sex === "M"), donne = top.filter(r => r.sex === "F");
+    if(uomini.length !== 4 || donne.length !== 4) return [];
+    return [0, 3, 1, 2].map(i => [uomini[i].id, donne[3 - i].id]);
+  }
+  const ids = top.map(r => r.id);
+  return [[ids[0], ids[7]], [ids[3], ids[4]], [ids[1], ids[6]], [ids[2], ids[5]]];
+}

@@ -17,6 +17,8 @@ const dataIt = s => { if(!s) return ""; const [a,m,g]=s.split("-"); return g+"/"
 const C = () => D.champs.find(c => c.id === D.cur) || D.champs[0];
 const EV = id => C().events.find(e => e.id === id);
 const tipoLabel = t => t === "femminile" ? "Femminile" : t === "misto" ? "Misto" : "Maschile";
+const partecipanti = (ch = C(), plurale = true) => ch.type === "femminile"
+  ? (plurale ? "giocatrici" : "giocatrice") : (plurale ? "giocatori" : "giocatore");
 const dotCls = t => t === "femminile" ? "dot dot--f" : t === "misto" ? "dot dot--x" : "dot";
 const eligible = p => { const t = C().type;
   return !p.archived && (t === "misto" || (t === "maschile" ? p.sex === "M" : p.sex === "F")); };

@@ -52,7 +52,7 @@ document.addEventListener("input", e => {
     const val = Number.isNaN(v) ? 0 : Math.max(0, Math.min(e.target.dataset.act === "bonuspunti" ? 50 : 40, v));
     if(e.target.dataset.act === "bonuspunti") c2.bonus = val; else c2.soglia = val;
     save();
-    const list = classifica().filter(r => r.pres > 0);
+    const list = classificaFinal8();
     const tab = document.getElementById("tabClass"); if(tab) tab.innerHTML = tabellaClassifica(list);
     const nota = document.getElementById("bonusNota"); if(nota) nota.textContent = notaBonus(c2, list.filter(r => r.bonus).length);
   }
@@ -157,11 +157,11 @@ document.addEventListener("click", e => {
     m.winner = (m.winner === el.dataset.s) ? null : el.dataset.s; save(); render(); return; }
   if(a === "finale8"){
     if(finaleDi(c)){ toast("La finale esiste già"); return; }
-    const top = classifica(c).filter(r => r.pres > 0).slice(0, 8);
-    if(top.length < 8){ toast("Servono almeno 8 giocatori con presenze"); return; }
-    if(!confirm("Creo la finale fra i primi 8: " + top.map(r => r.name).join(", ") + "?")) return;
+    const top = classificaFinal8(c).filter(r => r.final8);
+    const coppie = coppieFinal8(c);
+    if(!coppie.length){ toast(c.type === "misto" ? "Servono almeno 4 uomini e 4 donne con presenze" : "Servono almeno 8 " + partecipanti(c) + " con presenze"); return; }
+    if(!confirm("Creo la Final 8: " + top.map(r => r.name).join(", ") + "?")) return;
     const ids = top.map(r => r.id);
-    const coppie = [[ids[0], ids[7]], [ids[3], ids[4]], [ids[1], ids[6]], [ids[2], ids[5]]];
     const seeds = {}; const t = totals(null, c);
     coppie.forEach((pr,i) => seeds[i] = (t[pr[0]] ? t[pr[0]].pts : 0) + (t[pr[1]] ? t[pr[1]].pts : 0));
     const id = uid();
@@ -197,10 +197,10 @@ document.addEventListener("click", e => {
   if(a === "ricomincia"){ ev.ordine = []; save(); render(); return; }
   if(a === "assegna"){
     const nGioc = ev.ordine.length * 2;
-    if(!confirm(`Assegno i punti di "${ev.name}" a ${nGioc} giocatori e chiudo la giornata? La classifica si aggiorna e la giornata sparisce dall'elenco.`)) return;
+    if(!confirm(`Assegno i punti di "${ev.name}" a ${nGioc} ${partecipanti(c)} e chiudo la giornata? La classifica si aggiorna e la giornata sparisce dall'elenco.`)) return;
     const n = chiudiGiornata(ev);
     openEvent = null; tab = "giornate"; save(); render();
-    toast("Classifica aggiornata per " + n + " giocatori"); return;
+    toast("Classifica aggiornata per " + n + " " + partecipanti(c)); return;
   }
   if(a === "annullaultima"){
     const u = c.ultima; if(!u) return;
@@ -233,7 +233,7 @@ document.addEventListener("click", e => {
     const data = document.getElementById("dv_data").value || oggi();
     sheet.tmp = {...sheet.tmp, p1, p2, ed, data};
     if(!p1 || !p2){ toast("Scegli tutti e due i campioni"); return; }
-    if(p1 === p2){ toast("Servono due giocatori diversi"); return; }
+    if(p1 === p2){ toast(c.type === "femminile" ? "Servono due giocatrici diverse" : "Servono due giocatori diversi"); return; }
     if(c.type === "misto" && P(p1).sex === P(p2).sex){ toast("Nel misto la coppia è una donna e un uomo"); return; }
     if(!ed){ toast("Scrivi il numero dell'edizione"); return; }
     const gia = (D.albo || []).find(x => x.tipo === c.type && String(x.edizione) === ed);

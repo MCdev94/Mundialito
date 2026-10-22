@@ -2,9 +2,9 @@
 "use strict";
 /* ---------- testo e backup ---------- */
 function testoClassifica(){
-  const c = C(), l = classifica().filter(r => r.pres > 0);
+  const c = C(), l = classificaFinal8(c);
   return [c.name, "Classifica generale", ""]
-    .concat(l.map((r,i) => `${i+1}. ${r.name} — ${r.tot} pt (${r.pres} pres.)`)).join("\n");
+    .concat(l.map((r,i) => `${i+1}. ${r.name} — ${r.tot} pt (${r.pres} pres.)${r.final8 ? " · Final 8" : ""}`)).join("\n");
 }
 function testoEvento(ev){
   const pts = eventPoints(ev);

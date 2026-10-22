@@ -3,6 +3,8 @@
 /* ============================ RENDER ============================ */
 function render(){
   tabsEl.querySelectorAll("button").forEach(b => b.setAttribute("aria-current", String(b.dataset.tab === tab)));
+  const schedaPersone = tabsEl.querySelector('[data-tab="giocatori"]');
+  if(schedaPersone) schedaPersone.lastChild.textContent = C().type === "femminile" ? "Giocatrici" : "Giocatori";
   if(openEvent) renderEvento();
   else if(tab === "giornate") renderGiornate();
   else if(tab === "classifica") renderClassifica();
@@ -66,7 +68,7 @@ function renderEvento(){
     <div class="block"><h2>Chi c'è stasera</h2><p class="hint">${sub}</p>
     <label class="fld"><input id="q" placeholder="Cerca un nome" value="${esc(search)}" data-act="search" autocomplete="off"></label>
     <form class="row2" data-act="addp">
-      <input id="newp" placeholder="Giocatore nuovo" autocomplete="off" enterkeyhint="done"
+      <input id="newp" placeholder="${C().type === "femminile" ? "Giocatrice nuova" : "Giocatore nuovo"}" autocomplete="off" enterkeyhint="done"
         style="padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);">
       ${misto?`<select id="newsex" style="flex:0 0 86px;padding:13px 8px;border:1px solid var(--line);border-radius:12px;background:var(--paper);">
         <option value="F">Donna</option><option value="M">Uomo</option></select>`:""}
@@ -109,7 +111,9 @@ function renderEvento(){
     const turno = (ev.storico || []).length + 1;
     if(ev.finale){
       body = `<div class="block"><h2>${turno === 1 ? "Semifinali" : "Finale"}</h2>
-      <p class="hint">${turno === 1 ? "I primi 8 della classifica, accoppiati primo con ottavo e così via. Tocca chi passa."
+      <p class="hint">${turno === 1 ? (misto ? "I primi 4 uomini e le prime 4 donne della classifica, in coppie miste. Tocca chi passa."
+                                    : C().type === "femminile" ? "Le prime 8 della classifica, accoppiate prima con ottava e così via. Tocca chi passa."
+                                    : "I primi 8 della classifica, accoppiati primo con ottavo e così via. Tocca chi passa.")
                                     : "Le due vincenti si giocano il titolo, le due perdenti il terzo posto."}</p>
       ${ev.matches.map((m,i) => matchCard(ev,m,i,true)).join("")}</div>
       <div class="block">
@@ -228,7 +232,7 @@ function renderEventoChiuso(ev){
 
 /* --- classifica --- */
 function renderClassifica(){
-  const c = C(), list = classifica().filter(r => r.pres > 0);
+  const c = C(), list = classificaFinal8(c);
   const premiati = list.filter(r => r.bonus).length;
   const mod = canWrite();
   app.innerHTML = `
@@ -253,7 +257,7 @@ function renderClassifica(){
   <button class="btn btn--ghost" data-act="shareclass">Copia la classifica come testo</button>
   ${(() => { const f = finaleDi(c);
     if(f) return `<button class="btn btn--quiet" data-act="openev" data-id="${f.id}">Apri la finale a 8</button>`;
-    if(list.length < 8) return `<p class="note">Servono almeno 8 giocatori con presenze per creare la finale.</p>`;
+    if(!coppieFinal8(c).length) return `<p class="note">${c.type === "misto" ? "Servono almeno 4 uomini e 4 donne con presenze" : "Servono almeno 8 " + partecipanti(c) + " con presenze"} per creare la Final 8.</p>`;
     return `<button class="btn btn--quiet" data-act="finale8">Crea la finale a 8</button>`;
   })()}` : ""}
   ${renderAlbo(c)}`;
@@ -277,10 +281,11 @@ function notaBonus(c, premiati){
   return `Chi arriva ad almeno ${c.soglia} presenze prende ${c.bonus} punti in più, una volta sola, e valgono anche per tabellone e abbinamenti. `
     + (premiati ? `Finora l'hanno raggiunto in ${premiati}: hanno il nome in verde.` : "Per ora non l'ha raggiunto nessuno.");
 }
-function tabellaClassifica(list){
+function tabellaClassifica(list = classificaFinal8(), ch = C()){
   if(!list.length) return `<p class="empty">Ancora nessuna giornata chiusa qui.</p>`;
-  return `<table class="table"><thead><tr><th>Giocatore</th><th>Punti</th><th>Presenze</th></tr></thead>
-   <tbody>${list.map((r,i) => `<tr class="rowtap ${i===0?"lead":""}" data-act="player" data-id="${r.id}">
+  return `<p class="hint">Final 8: ${ch.type === "misto" ? "primi 4 uomini e prime 4 donne" : "prime 8 posizioni"} in evidenza.</p>
+  <table class="table"><thead><tr><th>${ch.type === "femminile" ? "Giocatrice" : "Giocatore"}</th><th>Punti</th><th>Presenze</th></tr></thead>
+   <tbody>${list.map((r,i) => `<tr class="rowtap ${r.final8?"final8":""} ${i===0?"lead":""}" data-act="player" data-id="${r.id}">
       <td><span class="nmc"><span class="pos">${i+1}</span><span class="${r.bonus?"conbonus":""}">${esc(r.name)} ${stelle(r.id)}</span></span></td>
       <td class="pts">${r.tot}</td>
       <td>${r.pres}</td></tr>`).join("")}</tbody></table>`;
@@ -294,14 +299,14 @@ function renderGiocatori(){
   const fuori = D.players.filter(p => p.archived).length;
   app.innerHTML = `
   <header class="top">${champBtn()}
-    <div class="top__row"><div><h1 class="top__title">Giocatori</h1>
+    <div class="top__row"><div><h1 class="top__title">${c.type === "femminile" ? "Giocatrici" : "Giocatori"}</h1>
     <p class="top__meta">${list.length} disponibili per questo campionato${fuori?` · ${fuori} ritirati`:""}</p>
     ${alboCompleto().length ? `<p class="legenda"><span><span class="stella stella--maschile">★</span> Maschile</span>
       <span><span class="stella stella--femminile">★</span> Femminile</span>
       <span><span class="stella stella--misto">★</span> Misto</span></p>` : ""}</div></div></header>
   <label class="fld"><input id="q" placeholder="Cerca un nome" value="${esc(search)}" data-act="search" autocomplete="off"></label>
   <form class="row2" data-act="addp2">
-    <input id="newp2" placeholder="Nuovo giocatore" autocomplete="off" enterkeyhint="done"
+    <input id="newp2" placeholder="${c.type === "femminile" ? "Nuova giocatrice" : "Nuovo giocatore"}" autocomplete="off" enterkeyhint="done"
       style="padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);">
     ${c.type==="misto"?`<select id="newsex2" style="flex:0 0 86px;padding:13px 8px;border:1px solid var(--line);border-radius:12px;background:var(--paper);">
       <option value="F">Donna</option><option value="M">Uomo</option></select>`:""}
@@ -324,7 +329,7 @@ function renderAltro(){
       <button data-act="cset" data-k="settimane" data-v="-1">−</button><b>${c.settimane || 8}</b>
       <button data-act="cset" data-k="settimane" data-v="1">+</button><small>settimane, 2 giornate ciascuna</small></div>
     <p class="note">${giornateChiuse(c)} giornat${giornateChiuse(c)===1?"a":"e"} su ${giornatePreviste(c)} previste.</p>
-    <h2 style="margin-top:18px">Data delle finali (top 8)</h2>
+    <h2 style="margin-top:18px">Data della Final 8</h2>
     <div class="row2" style="max-width:420px">
       <label class="fld" style="flex:3"><span>Data</span><input type="date" data-act="datafinale" value="${c.dataFinale || ""}" ${canWrite() ? "" : "disabled"}></label>
       <label class="fld" style="flex:2"><span>Orario</span><input data-act="orafinale" value="${esc(c.oraFinale || "")}" placeholder="pomeriggio, 15:00" ${canWrite() ? "" : "disabled"}></label>

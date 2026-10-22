@@ -7,7 +7,7 @@ function renderSheet(){
   let inner = "";
 
   if(sheet.tipo === "champs"){
-    inner = `<h3>Tornei</h3><p class="hint">I giocatori sono gli stessi, i punti di ogni torneo restano separati.</p>
+    inner = `<h3>Tornei</h3><p class="hint">${C().type === "femminile" ? "Le giocatrici sono le stesse" : "I giocatori sono gli stessi"}, i punti di ogni torneo restano separati.</p>
       ${D.champs.map(c => `<button class="card card--tap" data-act="setchamp" data-id="${c.id}">
         <div class="card__row"><span class="card__t"><span class="${dotCls(c.type)}" style="display:inline-block;margin-right:8px"></span>${esc(c.name)}</span>
         ${c.id===D.cur?'<span class="badge">attivo</span>':''}</div>
@@ -46,7 +46,7 @@ function renderSheet(){
     D.champs.forEach(ch => {
       const t = totals(null, ch);
       const r = t[sheet.id]; if(!r || (!r.campo && !r.pres)) return;
-      const pos = classifica(ch).filter(x => x.pres > 0).findIndex(x => x.id === sheet.id) + 1;
+      const pos = classificaFinal8(ch).findIndex(x => x.id === sheet.id) + 1;
       righe.push(`<tr><td>${esc(ch.name)}<br><span class="pt">${pos?`${pos}° posto`:""}</span></td>
         <td class="pts">${r.pts}${r.bonus ? `<br><span class="pt">di cui ${r.bonus} di bonus</span>` : ""}</td><td>${r.pres}</td></tr>`);
     });
@@ -86,7 +86,7 @@ function renderSheet(){
 
   if(sheet.tipo === "classifica"){
     inner = `<h3>Classifica da condividere</h3>
-      <p class="hint">Una pagina ogni 20-26 giocatori. Immagini per WhatsApp o PDF da stampare.</p>
+      <p class="hint">Classifica completa su più pagine, con le qualifiche alla Final 8 in evidenza. Immagini per WhatsApp o PDF da stampare.</p>
       <label class="fld" style="margin-bottom:10px"><span>Edizione da stampare</span>
         <input data-act="edizione" inputmode="numeric" value="${esc(edizioneDi(C()))}" placeholder="es. 2" style="max-width:120px"></label>
       <div id="locaWrap" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;
