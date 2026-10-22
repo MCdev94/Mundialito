@@ -173,6 +173,28 @@ document.addEventListener("click", e => {
     openEvent = id; step = "tabellone"; save(); render();
     toast("Finale creata: controlla le coppie"); return;
   }
+  if(a === "partecipantifinale"){
+    if(!ev || !ev.finale || ev.status === "chiuso") return;
+    sheet = {tipo:"partecipantifinale", eventId:ev.id}; render(); return;
+  }
+  if(a === "sceglisostituto"){
+    if(!sheet || sheet.tipo !== "partecipantifinale") return;
+    const finale = EV(sheet.eventId);
+    if(!finale || finale.status === "chiuso" || !finale.pairs.flat().includes(el.dataset.id)) return;
+    sheet = {tipo:"sostituiscifinale", eventId:finale.id, id:el.dataset.id}; render(); return;
+  }
+  if(a === "salvasostituto"){
+    if(!sheet || sheet.tipo !== "sostituiscifinale") return;
+    const finale = EV(sheet.eventId), campo = document.getElementById("sostituto_finale");
+    if(!finale || !campo) return;
+    const nuovo = campo.value;
+    if(!nuovo){ toast("Scegli il nome del sostituto"); return; }
+    if(finaleConRisultati(finale) && !confirm("La sostituzione cancellerà i risultati di questa finale e riporterà il tabellone alle semifinali. Confermi?")) return;
+    try{ sostituisciFinalista(finale, sheet.id, nuovo, c); }
+    catch(err){ toast(err.message); return; }
+    sheet = null; openEvent = finale.id; step = "tabellone";
+    save(); render(); toast("Partecipante sostituito"); return;
+  }
   if(a === "turno"){
     ev.storico = ev.storico || [];
     ev.storico.push(ev.matches.map(m => ({pa:m.pa, pb:m.pb, winner:m.winner})));

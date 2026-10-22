@@ -111,12 +111,12 @@ function renderEvento(){
     const turno = (ev.storico || []).length + 1;
     if(ev.finale){
       body = `<div class="block"><h2>${turno === 1 ? "Semifinali" : "Finale"}</h2>
-      <p class="hint">${turno === 1 ? (misto ? "I primi 4 uomini e le prime 4 donne della classifica, in coppie miste. Tocca chi passa."
-                                    : C().type === "femminile" ? "Le prime 8 della classifica, accoppiate prima con ottava e così via. Tocca chi passa."
-                                    : "I primi 8 della classifica, accoppiati primo con ottavo e così via. Tocca chi passa.")
+      <p class="hint">${turno === 1 ? (misto ? "Le coppie della Final 8: ogni coppia è una donna e un uomo. Tocca chi passa."
+                                    : "Le coppie della Final 8. Tocca chi passa.")
                                     : "Le due vincenti si giocano il titolo, le due perdenti il terzo posto."}</p>
       ${ev.matches.map((m,i) => matchCard(ev,m,i,true)).join("")}</div>
       <div class="block">
+        ${canWrite() ? `<button class="btn btn--ghost" data-act="partecipantifinale">Modifica partecipanti</button>` : ""}
         ${turno >= 2
           ? `<button class="btn btn--oro" data-act="decreta" data-fin="${ev.id}" ${evReady(ev)?"":"disabled"}>🏆 Decreta i campioni</button>`
           : `<button class="btn" data-act="turno" ${evReady(ev)?"":"disabled"}>Vai alla finale</button>`}

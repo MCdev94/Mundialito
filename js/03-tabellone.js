@@ -45,6 +45,31 @@ function campoLabel(ev, i){
   const turno = Math.floor(i / c) + 1;
   return "CAMPO " + (i % c + 1) + (turno > 1 ? " · " + turno + "° TURNO" : "");
 }
+function candidatiFinale(ev, uscente){
+  if(!ev || !ev.finale || ev.status === "chiuso") return [];
+  const presenti = (ev.pairs || []).flat();
+  const persona = D.players.find(p => p.id === uscente);
+  if(!persona || presenti.filter(id => id === uscente).length !== 1) return [];
+  return D.players.filter(p => p.sex === persona.sex && !presenti.includes(p.id))
+    .sort((a,b) => a.name.localeCompare(b.name));
+}
+function finaleConRisultati(ev){
+  return !!((ev.storico || []).length || (ev.matches || []).some(m => m.winner)
+    || (ev.ordine || []).length);
+}
+function sostituisciFinalista(ev, uscente, entrante, ch = C()){
+  if(!ev || !ev.finale || ev.status === "chiuso") throw new Error("La finale non è modificabile.");
+  if(!candidatiFinale(ev, uscente).some(p => p.id === entrante))
+    throw new Error("Scegli una persona dello stesso sesso, non già presente nel tabellone.");
+  /* La riserva prende lo stesso posto: le altre coppie non vengono riordinate. */
+  ev.pairs = ev.pairs.map(pr => pr.map(id => id === uscente ? entrante : id));
+  ev.presenti = ev.pairs.flat();
+  const t = totals(ev.id, ch);
+  ev.seeds = {};
+  ev.pairs.forEach((pr,i) => ev.seeds[i] = pr.reduce((somma,id) => somma + (t[id] ? t[id].pts : 0), 0));
+  ev.matches = [{pa:0, pb:1, winner:null}, {pa:2, pb:3, winner:null}];
+  ev.storico = []; ev.ordine = null; ev.punti = null;
+}
 function autoPairs(ev, modo){
   const t = totals(ev.id);
   const pres = [...(ev.presenti || [])];

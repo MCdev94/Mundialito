@@ -114,6 +114,29 @@ function renderSheet(){
       </div>`;
   }
 
+  if(sheet.tipo === "partecipantifinale" || sheet.tipo === "sostituiscifinale"){
+    const ev = EV(sheet.eventId);
+    if(!canWrite() || !ev || !ev.finale || ev.status === "chiuso"){ sheet = null; return; }
+    if(sheet.tipo === "partecipantifinale"){
+      inner = `<h3>Partecipanti alla Final 8</h3>
+        <p class="hint">Tocca il nome da sostituire. Il sostituto prende il suo posto nella stessa coppia.</p>
+        <ul class="plist">${ev.pairs.flat().map(id => `<li><button class="ptap" data-act="sceglisostituto" data-id="${id}">
+          <span class="nm">${esc(nm(id))}</span><span class="pt">Sostituisci</span></button></li>`).join("")}</ul>
+        <button class="btn btn--quiet" data-act="closesheet">Chiudi</button>`;
+    } else {
+      const candidati = candidatiFinale(ev, sheet.id), t = totals(null, C());
+      inner = `<h3>Sostituisci ${esc(nm(sheet.id))}</h3>
+        <p class="hint">Scegli liberamente tra ${P(sheet.id).sex === "F" ? "le giocatrici" : "i giocatori"} dello stesso sesso non già nel tabellone, anche senza presenze.</p>
+        ${candidati.length ? `<label class="fld"><span>Chi entra al suo posto</span>
+          <select id="sostituto_finale"><option value="">— scegli un nome —</option>
+          ${candidati.map(p => `<option value="${p.id}">${esc(p.name)} · ${t[p.id].pts} pt${p.archived ? (p.sex === "F" ? " · ritirata" : " · ritirato") : ""}</option>`).join("")}</select></label>`
+          : `<p class="empty">Nessun sostituto disponibile dello stesso sesso. Aggiungi prima il nome nella scheda ${P(sheet.id).sex === "F" ? "Giocatrici" : "Giocatori"}.</p>`}
+        ${finaleConRisultati(ev) ? `<p class="note">Attenzione: confermando verranno cancellati i risultati di questa finale e si ripartirà dalle semifinali.</p>` : ""}
+        <button class="btn" data-act="salvasostituto" ${candidati.length ? "" : "disabled"}>Conferma sostituzione</button>
+        <button class="btn btn--quiet" data-act="partecipantifinale">Indietro</button>`;
+    }
+  }
+
   if(sheet.tipo === "decreta"){
     const c = C(), t = sheet.tmp;
     const cand = D.players.filter(p => eligible(p) || t.p1 === p.id || t.p2 === p.id)
