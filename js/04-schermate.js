@@ -279,14 +279,14 @@ function renderAlbo(c){
 function notaBonus(c, premiati){
   if(!(c.bonus > 0) || !(c.soglia > 0)) return "Bonus spento: metti punti e presenze per attivarlo.";
   return `Chi arriva ad almeno ${c.soglia} presenze prende ${c.bonus} punti in più, una volta sola, e valgono anche per tabellone e abbinamenti. `
-    + (premiati ? `Finora l'hanno raggiunto in ${premiati}: hanno il nome in verde e il punteggio cerchiato in rosso.` : "Per ora non l'ha raggiunto nessuno.");
+    + (premiati ? `Finora l'hanno raggiunto in ${premiati}: hanno il punteggio nel bollino rosso.` : "Per ora non l'ha raggiunto nessuno.");
 }
 function tabellaClassifica(list = classificaFinal8(), ch = C()){
   if(!list.length) return `<p class="empty">Ancora nessuna giornata chiusa qui.</p>`;
   return `<p class="hint">Final 8: ${ch.type === "misto" ? "primi 4 uomini e prime 4 donne" : "prime 8 posizioni"} in evidenza.</p>
-  <table class="table"><thead><tr><th>${ch.type === "femminile" ? "Giocatrice" : "Giocatore"}</th><th>Punti</th><th>Presenze</th></tr></thead>
-   <tbody>${list.map((r,i) => `<tr class="rowtap ${r.final8?"final8":""} ${i===0?"lead":""}" data-act="player" data-id="${r.id}">
-      <td><span class="nmc"><span class="pos">${i+1}</span><span class="${r.bonus?"conbonus":""}">${esc(r.name)} ${stelle(r.id)}</span></span></td>
+  <table class="table table--classifica"><thead><tr><th>${ch.type === "femminile" ? "Giocatrice" : "Giocatore"}</th><th>Punti</th><th>Presenze</th></tr></thead>
+   <tbody>${list.map((r,i) => `<tr class="rowtap ${r.final8?"final8":""}" data-act="player" data-id="${r.id}">
+      <td><span class="nmc"><span class="pos">${i+1}</span><span class="nome-classifica">${esc(r.name)} ${stelle(r.id)}</span></span></td>
       <td class="pts">${r.bonus ? `<span class="punteggio-bonus" title="Bonus +${r.bonus} incluso">${r.tot}</span>` : r.tot}</td>
       <td>${r.pres}</td></tr>`).join("")}</tbody></table>`;
 }

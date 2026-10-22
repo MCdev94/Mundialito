@@ -140,11 +140,15 @@ button{cursor:pointer;}
 .table .pos{font-size:13px;font-weight:700;font-stretch:112%;color:var(--ink-soft);min-width:20px;}
 .table .pts{font-size:18px;font-weight:700;font-stretch:112%;}
 .punteggio-bonus{display:inline-flex;align-items:center;justify-content:center;
-  box-sizing:border-box;min-width:2.3em;aspect-ratio:1;border:3px solid #5A1726;
-  border-radius:50%;padding:0 .3em;}
+  box-sizing:border-box;width:2.15em;height:2.15em;flex:none;background:#5A1726;color:#FFFFFF;
+  border:0;border-radius:50%;padding:0;line-height:1;}
 .table .bn{color:var(--court);font-size:12px;font-weight:700;}
-.table .final8 td{background:#e2f3e9;}
-.table .final8 td:first-child{box-shadow:inset 3px 0 0 #0c5b45;}
+.table--classifica td{background:var(--paper);color:var(--ink);box-shadow:none;}
+.table--classifica .final8 .nmc{font-weight:700;}
+.table--classifica th:nth-child(2),.table--classifica td:nth-child(2){width:64px;text-align:center;}
+.table--classifica th:last-child,.table--classifica td:last-child{width:72px;}
+.table--classifica .nmc{align-items:baseline;}
+.table--classifica .nome-classifica{min-width:0;overflow-wrap:anywhere;}
 .lead td{background:var(--paper);box-shadow:inset 3px 0 0 var(--ball);}
 .lead td:not(:first-child){box-shadow:none;}
 @supports (background:color-mix(in srgb,red 10%,blue)){
