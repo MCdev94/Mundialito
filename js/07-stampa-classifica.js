@@ -31,7 +31,14 @@ function rigaClass(x, X, Y, W, H, dati, verde){
   if(tipi.length) disegnaStelle(x, tipi, X + 64 + x.measureText(dati.nome).width + 10, cy, rS, "rgba(255,255,255,.85)");
   x.textAlign = "center"; fitFont(x, String(dati.pl), 50, "700", s-2, 13);
   x.fillText(String(dati.pl), X + W - 96, cy);
-  x.textAlign = "center"; fitFont(x, String(dati.pts), 66, "700", s, 13);
+  const rBonus = Math.min(28, H/2 - 3);
+  if(dati.bonus){
+    x.save();
+    x.strokeStyle = CL.rosso; x.lineWidth = 4;
+    x.beginPath(); x.arc(X + W - 36, cy, rBonus, 0, Math.PI*2); x.stroke();
+    x.restore();
+  }
+  x.textAlign = "center"; fitFont(x, String(dati.pts), dati.bonus ? 2*rBonus - 10 : 66, "700", s, 13);
   x.fillText(String(dati.pts), X + W - 36, cy);
 }
 function intestaCol(x, X, W, Y, ch){
@@ -88,7 +95,7 @@ function testoFinali(ch){
 async function drawClassifica(ch){
   ch = ch || C();
   const lista = classificaFinal8(ch)
-    .map(r => ({id:r.id, pos:r.pos, final8:r.final8, nome:r.name.toUpperCase(), pl:r.pres, pts:r.tot}));
+    .map(r => ({id:r.id, pos:r.pos, final8:r.final8, bonus:r.bonus, nome:r.name.toUpperCase(), pl:r.pres, pts:r.tot}));
   if(!lista.length) throw new Error("classifica vuota");
   const dataF = testoFinali(ch);
 
