@@ -1,6 +1,7 @@
-/* Mundialito — Avvio dell'app */
+/* GonéPadelCup — Avvio dell'app */
 "use strict";
 
+pulisciDatiPrecedenti();
 D = load() || fresh();
 D.albo = D.albo || [];
 normalizzaTornei();

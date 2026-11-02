@@ -1,4 +1,4 @@
-/* Mundialito — Punteggi, bonus, classifica, tornei e albo d'oro */
+/* GonéPadelCup — Punteggi, bonus, classifica, tornei e albo d'oro */
 "use strict";
 /* ---------- punteggi ---------- */
 function ordineDaTabellone(ev){
@@ -70,7 +70,7 @@ function eventPoints(ev){
 }
 const matchDone = m => (m.pb === null || m.pb === undefined) || m.winner === "a" || m.winner === "b";
 const evReady = ev => ev.matches.length > 0 && ev.matches.every(matchDone);
-const TORNEI = [["maschile","Mundialito Maschile",8], ["femminile","Mundialito Femminile",4], ["misto","Mundialito Misto",5]];
+const TORNEI = [["maschile","GonéPadelCup Maschile",0], ["femminile","GonéPadelCup Femminile",0], ["misto","GonéPadelCup Misto",0]];
 function pesoTorneo(c){ return Object.keys(c.carry || {}).length + (c.events || []).length * 10 + (c.base || 0); }
 function firmaCarry(c){
   return Object.keys(c.carry || {}).map(id => {
@@ -85,7 +85,7 @@ function normalizzaTornei(){
     const gruppo = D.champs.filter(c => c.type === tipo).sort((a,b) => pesoTorneo(b) - pesoTorneo(a));
     let main = gruppo[0];
     if(!main){
-      main = {id:uid(), name:nome, ed:"", type:tipo, soglia, bonus:5, settimane:8, base:0,
+      main = {id:uid(), name:nome, ed:"", type:tipo, soglia, bonus:0, settimane:8, base:0,
               carry:{}, bonusAss:null, ultima:null, events:[]};
       cambiato = true;
     }
@@ -131,33 +131,8 @@ function normalizzaTornei(){
   return cambiato;
 }
 /* --- albo d'oro --- */
-/* Le edizioni precedenti all'albo digitale restano visibili anche se non sono ancora
-   state salvate su Supabase. Una voce registrata dall'interfaccia per lo stesso
-   torneo e la stessa edizione prende sempre il posto di quella storica. */
-const ALBO_STORICO = [
-  {id:"storico-maschile-1", tipo:"maschile", edizione:"1", data:"",
-   nomi:["Roberto Regini", "De Tommaso Walter"]}
-];
-function chiaveNome(s){
-  return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
-}
-function chiaveNomeLibera(s){ return chiaveNome(s).split(" ").filter(Boolean).sort().join(" "); }
-function giocatorePerNome(nome){
-  const esatta = chiaveNome(nome), libera = chiaveNomeLibera(nome);
-  return D.players.find(p => chiaveNome(p.name) === esatta)
-    || D.players.find(p => chiaveNomeLibera(p.name) === libera)
-    || null;
-}
 function alboCompleto(){
-  const salvato = D.albo || [];
-  const presenti = new Set(salvato.map(a => a.tipo + "|" + String(a.edizione)));
-  const storico = ALBO_STORICO.filter(a => !presenti.has(a.tipo + "|" + String(a.edizione))).map(a => ({
-    ...a,
-    champ_id:(D.champs.find(c => c.type === a.tipo) || {}).id || null,
-    giocatori:a.nomi.map(nome => { const p = giocatorePerNome(nome); return p ? p.id : null; })
-  }));
-  return salvato.concat(storico);
+  return D.albo || [];
 }
 function voceAlbo(id){ return alboCompleto().find(a => a.id === id) || null; }
 function vittorieDi(id){ return alboCompleto().filter(a => (a.giocatori || []).includes(id)); }

@@ -1,7 +1,7 @@
 {
-  "name": "Mundialito",
-  "short_name": "Mundialito",
-  "description": "Giornate, classifiche e finali del Mundialito: maschile, femminile e misto.",
+  "name": "GonéPadelCup",
+  "short_name": "GonéPadelCup",
+  "description": "GonéPadelCup: competizioni di padel maschile, femminile e misto.",
   "lang": "it",
   "start_url": "./",
   "scope": "./",

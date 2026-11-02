@@ -1,6 +1,6 @@
-# Mundialito
+# GonéPadelCup
 
-Gestione del Mundialito del Torneo Roby – Gonetta: giornate, tabelloni, classifiche, bonus presenze, finali a 8 e albo d'oro, per i tornei maschile, femminile e misto.
+GonéPadelCup: nuova competizione maschile, femminile e mista. Dal 2 novembre 2026 i giocatori sono conservati, mentre partite, punti, presenze, finali, bonus e vittorie ripartono da zero. Le nuove regole sono in attesa di configurazione.
 
 App statica pubblicata con GitHub Pages, dati su Supabase. Nessuna compilazione: i file del repository sono esattamente quelli che il browser carica.
 
@@ -30,10 +30,12 @@ Gli script sono normali file JavaScript che condividono lo stesso ambiente e van
 ## Regole da rispettare quando si modifica
 
 - **Nuovo file JavaScript**: va aggiunto sia in `index.html` sia nell'elenco `GUSCIO` di `sw.js`, altrimenti offline non c'è.
-- **Versione dei dati**: ogni riga mandata al database porta `v = VERSIONE_DATI` (in `08-sync.js`). Il database rifiuta le righe con `v` mancante o minore di 3: è il blocco che impedisce a versioni vecchie dell'app di sovrascrivere dati buoni. Se un giorno cambia il formato dei dati, si alzano insieme `VERSIONE_DATI` e il controllo `v >= …` sul database.
+- **Versione dei dati**: ogni riga mandata al database porta `v = VERSIONE_DATI` (attualmente 4). Il database rifiuta versioni inferiori a 4; una policy restrittiva richiede inoltre la generazione corrente nelle richieste dei client autenticati, anche per le cancellazioni.
 - **Il telefono del gestore comanda solo se è già sincronizzato**: un dispositivo che non ha mai completato una sincronizzazione butta la sua coda e prende i dati dal database. È la regola che protegge i dati quando il gestore cambia telefono.
 - **Il bonus non si scrive nei punti**: nel database restano i punti fatti in campo; il bonus si applica sopra con soglia e punti del riquadro BONUS. Così cambiando i numeri o annullando una giornata tutto si ricalcola giusto.
-- **Albo storico**: la prima edizione maschile mostra Roberto Regini e De Tommaso Walter anche se la relativa riga non è ancora presente nel database. Un'eventuale registrazione ufficiale della stessa edizione sostituisce automaticamente la voce storica, senza duplicarla.
+- **Nessun albo incorporato**: vittorie e stelle derivano soltanto dai dati della nuova competizione.
+- **Separazione delle competizioni**: memoria locale e coda nuove; i backup precedenti non si importano. Il database ammette le scritture soltanto dai client con la nuova generazione, oltre all'accesso autenticato già richiesto.
+- **Nuove regole**: `settings.regolePronte` resta `false` fino alla prossima configurazione. La gestione dell'anagrafica resta disponibile.
 
 ## Test
 

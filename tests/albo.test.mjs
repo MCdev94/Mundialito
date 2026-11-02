@@ -4,21 +4,19 @@ import { conDati } from "./ambiente.mjs";
 
 const G = (id, name, sex = "M") => ({ id, name, sex });
 
-test("la prima edizione maschile assegna una stella ai vincitori storici", () => {
+test("la nuova competizione non ricrea vittorie o stelle del passato", () => {
   const app = conDati([
     G("roberto", "Regini Roberto"),
     G("walter", "De Tommaso Walter")
   ]);
 
-  const voce = app.run(`alboCompleto().find(a => a.tipo === "maschile" && a.edizione === "1")`);
-  assert.deepEqual(voce.giocatori, ["roberto", "walter"]);
-  assert.deepEqual(voce.nomi, ["Roberto Regini", "De Tommaso Walter"]);
-  assert.match(app.run(`stelle("roberto")`), /stella--maschile/);
-  assert.match(app.run(`stelle("walter")`), /stella--maschile/);
-  assert.match(app.run(`tabellaClassifica([{id:"roberto", name:"Regini Roberto", pts:0, pres:0, tot:0, bonus:0}])`), /stella--maschile/);
+  assert.deepEqual(app.run("alboCompleto()"), []);
+  assert.equal(app.run(`stelle("roberto")`), "");
+  assert.equal(app.run(`stelle("walter")`), "");
+  assert.doesNotMatch(app.run(`tabellaClassifica([{id:"roberto", name:"Regini Roberto", pts:0, pres:0, tot:0, bonus:0}])`), /stella--maschile/);
 });
 
-test("una voce ufficiale sostituisce quella storica senza creare doppioni", () => {
+test("le vittorie sono soltanto quelle registrate nella nuova competizione", () => {
   const app = conDati([G("a", "Altro Uno"), G("b", "Altro Due")]);
   app.run(`D.albo.push({id:"ufficiale", champ_id:C().id, tipo:"maschile", edizione:"1",
     data:"2026-01-01", giocatori:["a","b"], nomi:["Altro Uno","Altro Due"]})`);

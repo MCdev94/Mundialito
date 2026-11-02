@@ -1,4 +1,4 @@
-/* Mundialito — Disegno delle schermate: giornate, giornata, classifica, giocatori, altro */
+/* GonéPadelCup — Disegno delle schermate: giornate, giornata, classifica, giocatori, altro */
 "use strict";
 /* ============================ RENDER ============================ */
 function render(){
@@ -27,7 +27,7 @@ function renderGiornate(){
       <h1 class="top__title">Giornate</h1>
       <p class="top__meta">${giornateChiuse(c)} giocate${list.length ? " · " + list.length + " in corso" : ""}</p>
     </div></div></header>
-  ${canWrite() ? `<button class="btn" data-act="newev">Nuova giornata</button>`
+  ${!regolePronte() ? `<p class="empty">GonéPadelCup è pronta: giocatori conservati e classifiche azzerate. Le nuove regole saranno configurate nel prossimo aggiornamento.</p>` : canWrite() ? `<button class="btn" data-act="newev">Nuova giornata</button>`
     : `<p class="empty">Stai guardando in sola lettura. Per gestire le giornate entra da Altro → Accedi come gestore.</p>`}
   <div class="block">
   ${list.length ? list.map(e => `
@@ -238,13 +238,13 @@ function renderClassifica(){
   app.innerHTML = `
   <header class="top">${champBtn()}
     <div class="top__row"><div><h1 class="top__title">Classifica</h1>
-    <p class="top__meta">${giornateChiuse(c)} giornat${giornateChiuse(c)===1?"a":"e"} su ${giornatePreviste(c)}</p></div>
+    <p class="top__meta">${regolePronte() ? `${giornateChiuse(c)} giornat${giornateChiuse(c)===1?"a":"e"} su ${giornatePreviste(c)}` : "Nuova competizione · regole da configurare"}</p></div>
     <button type="button" class="aggiorna-classifica" data-act="sync" aria-label="Aggiorna classifica"
       title="Aggiorna classifica" aria-busy="${SYNC.stato === "corso"}" ${SYNC.stato === "corso" ? "disabled" : ""}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17"/></svg>
     </button></div></header>
 
-  <section class="bonus">
+  ${regolePronte() ? `<section class="bonus">
     <h2 class="bonus__t">BONUS</h2>
     <div class="bonus__row">
       <label class="bonus__f"><span>Punti da assegnare</span>
@@ -253,7 +253,7 @@ function renderClassifica(){
         <input type="number" inputmode="numeric" min="0" max="40" data-act="bonuspres" value="${c.soglia || 0}" ${mod?"":"disabled"}></label>
     </div>
     <p class="bonus__n" id="bonusNota">${notaBonus(c, premiati)}</p>
-  </section>
+  </section>` : ""}
 
   <div id="tabClass">${tabellaClassifica(list)}</div>
   ${list.length ? `
@@ -327,7 +327,7 @@ function renderAltro(){
   app.innerHTML = `
   <header class="top">${champBtn()}
     <div class="top__row"><h1 class="top__title">Impostazioni</h1></div></header>
-  <div class="block"><h2>${esc(c.name)}</h2>
+  ${regolePronte() ? `<div class="block"><h2>${esc(c.name)}</h2>
     <h2 style="margin-top:14px">Durata dell'edizione</h2>
     <div class="stepper">
       <button data-act="cset" data-k="settimane" data-v="-1">−</button><b>${c.settimane || 8}</b>
@@ -343,7 +343,7 @@ function renderAltro(){
     <div class="stepper">
       <button data-act="cset" data-k="base" data-v="-1">−</button><b>${c.base || 0}</b>
       <button data-act="cset" data-k="base" data-v="1">+</button><small>quelle dei vecchi fogli</small></div>
-  </div>
+  </div>` : `<p class="empty">GonéPadelCup: le nuove regole devono ancora essere configurate.</p>`}
 
   <div class="block"><h2>Campi del circolo</h2>
     <div class="stepper"><button data-act="set" data-k="campi" data-v="-1">−</button><b>${D.settings.campi}</b>

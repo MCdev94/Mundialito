@@ -1,7 +1,8 @@
-/* Mundialito — Stato condiviso, utilità, salvataggio locale */
+/* GonéPadelCup — Stato condiviso, utilità, salvataggio locale */
 "use strict";
-const SEED = null;   // i dati stanno nel database: un dispositivo nuovo li scarica al primo avvio
-const KEY = "mundialito.v2";
+const APP_GENERATION = "gone-padel-cup-2026-11-02";
+const KEY = "gone-padel-cup.v1";
+const regolePronte = () => D.settings.regolePronte === true;
 const app = document.getElementById("app");
 const tabsEl = document.getElementById("tabs");
 
@@ -32,21 +33,18 @@ function save(){
   salvaLocale();
   clearTimeout(tPush); tPush = setTimeout(() => { try{ pushDiff(); }catch(e){} }, 600);
 }
-function load(){ try{ const r = localStorage.getItem(KEY); if(r){ const d = JSON.parse(r); if(d && d.champs) return d; } }catch(e){} return null; }
+function backupCompatibile(d){ return !!(d && Array.isArray(d.players) && Array.isArray(d.champs) && d.settings && d.settings.generation === APP_GENERATION); }
+function load(){ try{ const r = localStorage.getItem(KEY); if(r){ const d = JSON.parse(r); if(backupCompatibile(d)) return d; } }catch(e){} return null; }
+function pulisciDatiPrecedenti(){
+  const precedente = ["mundi", "alito.v2"].join("");
+  for(const suffisso of ["", ".coda", ".gestore", ".rev"]){
+    try{ localStorage.removeItem(precedente + suffisso); }catch(e){}
+  }
+}
 function fresh(){
-  const d = {v:2, settings:{campi:5}, players:[], champs:[], albo:[], cur:null};
-  const byName = {};
-  (SEED && SEED.players || []).forEach(p => {
-    const id = uid(); d.players.push({id, name:p.n, sex:p.s}); byName[p.n] = id;
-  });
-  (SEED && SEED.champs || []).forEach(c => {
-    const ch = {id:uid(), name:c.name, ed:c.ed, type:c.type, soglia:c.soglia, bonus:c.bonus,
-      settimane:c.settimane || 8, base:c.base || 0, carry:{}, bonusAss:null, events:[]};
-    Object.keys(c.carry || {}).forEach(n => { if(byName[n]) ch.carry[byName[n]] = c.carry[n]; });
-    d.champs.push(ch);
-  });
-  if(!d.champs.length) d.champs.push({id:uid(), name:"Mundialito", ed:"1ª edizione", type:"maschile",
-    soglia:8, bonus:5, carry:{}, events:[]});
+  const d = {v:2, settings:{campi:5, generation:APP_GENERATION, regolePronte:false, firma:"GonéPadelCup"}, players:[], champs:[], albo:[], cur:null};
+  d.champs.push({id:uid(), name:"GonéPadelCup Maschile", ed:"", type:"maschile",
+    soglia:0, bonus:0, carry:{}, events:[]});
   d.cur = d.champs[0].id;
   return d;
 }

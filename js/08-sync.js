@@ -1,10 +1,10 @@
-/* Mundialito — Sincronizzazione con Supabase: coda, regole, accesso gestore */
+/* GonéPadelCup — Sincronizzazione con Supabase: coda, regole, accesso gestore */
 "use strict";
 /* ---------- sincronizzazione Supabase ---------- */
 const SB_URL = "https://fmjraciijqjelnthxwhq.supabase.co";
 const SB_KEY = "sb_publishable_WP0-Q7i10-F2RTJgCCwAiw_tcEdHHox";
 const QKEY = KEY + ".coda", GKEY = KEY + ".gestore", RKEY = KEY + ".rev";
-const VERSIONE_DATI = 3;   // deve combaciare con il controllo "v >= 3" sul database
+const VERSIONE_DATI = 4;
 
 let SB = null, SESSION = null, QUEUE = [], SNAP = null, flushing = false;
 let SYNC = {stato:"avvio", msg:""};
@@ -32,7 +32,7 @@ function rowsOf(st){
     mult:e.mult || 1, campi:e.campi || 5, status:e.status || "bozza", finale:!!e.finale,
     presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [], seeds:e.seeds || {},
     storico:e.storico || [], ordine:e.ordine || null, punti:e.punti || null, created:e.created || 0, v:VERSIONE_DATI})));
-  out.settings.push({id:1, data:st.settings || {}, v:VERSIONE_DATI});
+  out.settings.push({id:1, data:{...st.settings, generation:APP_GENERATION}, v:VERSIONE_DATI});
   out.albo = (st.albo || []).map(a => ({id:a.id, champ_id:a.champ_id || null, tipo:a.tipo,
     edizione:String(a.edizione), data:a.data || null, giocatori:a.giocatori || [], nomi:a.nomi || [], v:VERSIONE_DATI}));
   return out;
@@ -117,6 +117,8 @@ async function syncNow(silenzioso){
   try{
     setSync("corso"); if(!silenzioso) render();
     let r = await pull();
+    if(!r.settings[0] || r.settings[0].data.generation !== APP_GENERATION)
+      throw new Error("La nuova competizione è in preparazione. Riprova tra poco.");
     let vuoto = !r.champs.length && !r.players.length;
     // un dispositivo che non ha mai completato una sincronizzazione non ha niente da imporre:
     // se il database ha già i dati, la sua coda è vecchia e va scartata
@@ -162,7 +164,9 @@ async function initSync(){
     setSync("locale", "libreria non caricata"); render(); return;
   }
   try{
-    SB = window.supabase.createClient(SB_URL, SB_KEY);
+    SB = window.supabase.createClient(SB_URL, SB_KEY, {
+      global:{headers:{"x-app-generation":APP_GENERATION}}
+    });
     const {data} = await SB.auth.getSession();
     SESSION = (data && data.session) || null;
     if(SESSION) ls(GKEY, "1");

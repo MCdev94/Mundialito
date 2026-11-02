@@ -1,4 +1,4 @@
-/* Mundialito — Gestione di tocchi, moduli e campi di testo */
+/* GonéPadelCup — Gestione di tocchi, moduli e campi di testo */
 "use strict";
 /* ============================ AZIONI ============================ */
 tabsEl.addEventListener("click", e => {
@@ -69,6 +69,10 @@ document.addEventListener("click", e => {
   if(!canWrite() && !AZIONI_LETTURA.has(a)){
     toast("Serve l'accesso da gestore per modificare"); return;
   }
+  const azioniTorneo = new Set(["newev","editev","saveev","finale8","board","auto","assegna","turno","incorona","decreta","cset"]);
+  if(!regolePronte() && azioniTorneo.has(a)){
+    toast("Le nuove regole devono ancora essere configurate."); return;
+  }
 
   if(a === "home"){ openEvent = null; render(); return; }
   if(a === "closesheet"){ sheet = null; render(); return; }
@@ -84,7 +88,7 @@ document.addEventListener("click", e => {
     sheet.tmp[k] = Math.max(lim[0], Math.min(lim[1], sheet.tmp[k] + (+el.dataset.v))); render(); return;
   }
   if(a === "savechamp"){
-    const name = (document.getElementById("ch_name").value || "").trim() || "Mundialito " + tipoLabel(sheet.tmp.type).toLowerCase();
+    const name = (document.getElementById("ch_name").value || "").trim() || "GonéPadelCup " + tipoLabel(sheet.tmp.type).toLowerCase();
     const ed = "";
     const id = uid();
     D.champs.push({id, name, ed, type:sheet.tmp.type, soglia:sheet.tmp.soglia, bonus:sheet.tmp.bonus,

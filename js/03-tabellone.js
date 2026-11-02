@@ -1,4 +1,4 @@
-/* Mundialito — Tabellone, turni della finale, abbinamenti automatici */
+/* GonéPadelCup — Tabellone, turni della finale, abbinamenti automatici */
 "use strict";
 /* ---------- tabellone ---------- */
 function buildBoard(ev){

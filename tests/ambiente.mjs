@@ -48,7 +48,7 @@ export function nuovaApp(){
 /* Un piccolo campionato di prova: 3 tornei, giocatori con punti e presenze scelti a mano. */
 export function conDati(giocatori, carryMaschile = {}){
   const app = nuovaApp();
-  app.imposta("D", { v:2, settings:{ campi:5 }, albo:[], cur:null, players: giocatori, champs:[] });
+  app.imposta("D", { v:2, settings:{ campi:5, generation:app.run("APP_GENERATION"), regolePronte:true }, albo:[], cur:null, players: giocatori, champs:[] });
   app.run("normalizzaTornei()");
   app.run(`(() => { const c = D.champs.find(x => x.type === "maschile"); D.cur = c.id; })()`);
   const c = app.vivo(`D.champs.find(x => x.type === "maschile")`);

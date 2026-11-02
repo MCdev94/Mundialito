@@ -1,4 +1,4 @@
-/* Mundialito — Testi da copiare, esportazione e importazione del backup */
+/* GonéPadelCup — Testi da copiare, esportazione e importazione del backup */
 "use strict";
 /* ---------- testo e backup ---------- */
 function testoClassifica(){
@@ -28,7 +28,7 @@ function fallback(txt){
 }
 async function doExport(){
   const blob = new Blob([JSON.stringify(D, null, 1)], {type:"application/json"});
-  await offriFile("mundialito-" + oggi() + ".json", blob);
+  await offriFile("gone-padel-cup-" + oggi() + ".json", blob);
 }
 function doImport(file){
   if(!file) return;
@@ -36,7 +36,7 @@ function doImport(file){
   r.onload = () => {
     try{
       const d = JSON.parse(r.result);
-      if(!d || !d.players || !d.champs) throw 0;
+      if(!backupCompatibile(d)){ toast("Questo backup appartiene a una competizione precedente e non può essere importato."); return; }
       if(!confirm("Sostituisco i dati di questo browser con il backup?")) return;
       D = d; D.settings = D.settings || {campi:5}; D.cur = D.cur || D.champs[0].id;
       openEvent = null; sheet = null; save(); render(); toast("Backup caricato");
