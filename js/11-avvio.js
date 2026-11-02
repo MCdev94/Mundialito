@@ -11,5 +11,24 @@ initSync();
 
 /* app installabile e utilizzabile anche senza rete */
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-  window.addEventListener("load", () => { navigator.serviceWorker.register("./sw.js").catch(() => {}); });
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js", {updateViaCache:"none"}).then(reg => {
+      reg.update().catch(() => {});
+      document.addEventListener("visibilitychange", () => {
+        if(document.visibilityState === "visible") reg.update().catch(() => {});
+      });
+    }).catch(() => {});
+  });
+  const giaControllata = !!navigator.serviceWorker.controller;
+  let ricaricata = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if(!giaControllata || ricaricata) return;
+    // Una modifica in corso rimane aperta: la nuova versione arriverà alla riapertura.
+    if(sheet || openEvent || QUEUE.length){
+      toast("Aggiornamento pronto: chiudi e riapri l’app appena hai finito.");
+      return;
+    }
+    ricaricata = true;
+    location.reload();
+  });
 }
