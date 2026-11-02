@@ -2,13 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { nuovaApp, conDati, finitoSupabase } from "./ambiente.mjs";
 
-test("la partenza pulita ha quattro tornei nuovi senza partite, bonus, stelle o vittorie", () => {
+test("la partenza pulita ha quattro tornei senza partite, bonus maturati, stelle o vittorie", () => {
   const a = nuovaApp();
   a.run("D = fresh(); normalizzaTornei()");
   assert.equal(a.run("D.champs.length"), 4);
-  assert.ok(a.run("D.champs.every(c => c.name.startsWith('GonéPadelCup ') && c.bonus === 0 && c.soglia === 0 && !c.events.length && !Object.keys(c.carry).length)"));
+  assert.ok(a.run("D.champs.every(c => c.name.startsWith('GonéPadelCup ') && c.bonus === 5 && !c.events.length && !Object.keys(c.carry).length)"));
   assert.deepEqual(a.run("alboCompleto()"), []);
-  assert.equal(a.run("regolePronte()"), false);
+  assert.equal(a.run("regolePronte()"), true);
   assert.equal(a.run("backupCompatibile(D)"), true);
 });
 

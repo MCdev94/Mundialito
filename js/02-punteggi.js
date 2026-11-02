@@ -88,7 +88,7 @@ function normalizzaTornei(){
       .sort((a,b) => pesoTorneo(b) - pesoTorneo(a));
     let main = gruppo[0];
     if(!main){
-      main = {id:uid(), name:nome, ed:"", type:tipo, divisione, soglia, bonus:0, settimane:8, base:0,
+      main = {id:uid(), name:nome, ed:"", type:tipo, divisione, ...REGOLE_BASE[tipo], base:0,
               carry:{}, bonusAss:null, ultima:null, events:[]};
       cambiato = true;
     }
@@ -167,7 +167,8 @@ function giornateChiuse(ch){
   return (ch.base || 0) + ch.events.filter(e => e.status === "chiuso" && !e.finale).length;
 }
 function finaleDi(ch){ return (ch || C()).events.find(e => e.finale) || null; }
-function giornatePreviste(ch){ return ((ch || C()).settimane || 8) * 2; }
+function giornateSettimanali(ch = C()){ return ch.type === "maschile" ? 2 : 1; }
+function giornatePreviste(ch = C()){ return (ch.settimane || REGOLE_BASE[ch.type].settimane) * giornateSettimanali(ch); }
 function anteprimaBonus(ch){
   ch = ch || C();
   const t = totals(null, ch);
@@ -215,9 +216,10 @@ function classifica(ch){
 function classificaFinal8(ch = C()){
   const lista = classifica(ch).filter(r => partecipaAlCampionato(r.id, ch));
   if(!regolePronte()) return lista.map((r,i) => ({...r,pos:i+1,final8:false}));
+  const qualificabili = lista.filter(r => r.pres > 0);
   const qualificati = new Set((ch.type === "misto"
-    ? ["M", "F"].flatMap(sesso => lista.filter(r => r.sex === sesso).slice(0, 4))
-    : lista.slice(0, 8)).map(r => r.id));
+    ? ["M", "F"].flatMap(sesso => qualificabili.filter(r => r.sex === sesso).slice(0, 4))
+    : qualificabili.slice(0, 8)).map(r => r.id));
   const ordinata = ch.type === "misto"
     ? [...lista.filter(r => qualificati.has(r.id)), ...lista.filter(r => !qualificati.has(r.id))]
     : lista;

@@ -1,6 +1,6 @@
 # GonéPadelCup
 
-GonéPadelCup: maschile Avanzato e Intermedio, femminile e misto. I due campionati maschili sono indipendenti: la partecipazione deriva dai nomi inseriti manualmente negli eventi, senza attribuire un livello alle persone. Lo stesso giocatore può partecipare a entrambi. Punteggi, bonus e finali sono ancora in attesa delle nuove regole.
+GonéPadelCup: maschile Avanzato e Intermedio, femminile e misto. I due campionati maschili sono indipendenti: la partecipazione deriva dai nomi inseriti manualmente negli eventi, senza attribuire un livello alle persone. Lo stesso giocatore può partecipare a entrambi. Coppie, tabelloni, punti, bonus e finali mantengono le logiche precedenti; i risultati della vecchia competizione restano cancellati.
 
 Eventi maschili creati soltanto dal gestore. Orari precompilati e modificabili: martedì Avanzato 20:00–21:30 e Intermedio 21:30–23:00; sabato Avanzato 14:00–15:30 e Intermedio 15:30–17:00. Negli altri giorni l'orario è manuale.
 
@@ -39,7 +39,7 @@ Gli script sono normali file JavaScript che condividono lo stesso ambiente e van
 - **Il bonus non si scrive nei punti**: nel database restano i punti fatti in campo; il bonus si applica sopra con soglia e punti del riquadro BONUS. Così cambiando i numeri o annullando una giornata tutto si ricalcola giusto.
 - **Nessun albo incorporato**: vittorie e stelle derivano soltanto dai dati della nuova competizione.
 - **Separazione delle competizioni**: memoria locale e coda nuove; i backup precedenti non si importano. Il database ammette le scritture soltanto dai client con la nuova generazione, oltre all'accesso autenticato già richiesto.
-- **Nuove regole**: `settings.regolePronte` resta `false` fino alla prossima configurazione. Anagrafica, creazione manuale degli eventi e scelta dei partecipanti sono disponibili; le operazioni che attribuiscono punti restano bloccate.
+- **Regole operative**: `settings.regolePronte` è `true`. Punti per posizione: 4 per campo alla prima coppia, poi 2 in meno. Bonus +5 al raggiungimento di 8 presenze nel maschile, 4 nel femminile e 5 nel misto. Durata iniziale: 10 settimane per ciascun maschile e 7 per femminile e misto; i parametri sono modificabili. Le giornate settimanali sono 2 nel maschile e 1 negli altri, secondo il calendario concordato.
 - **Divisioni**: la chiave del campionato è `type` + `divisione`. Non unire i maschili soltanto perché hanno lo stesso `type`. L'albo usa `champ_id` per distinguere le edizioni delle due categorie.
 
 ## Test

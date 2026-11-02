@@ -346,7 +346,7 @@ function renderAltro(){
     <h2 style="margin-top:14px">Durata dell'edizione</h2>
     <div class="stepper">
       <button data-act="cset" data-k="settimane" data-v="-1">−</button><b>${c.settimane || 8}</b>
-      <button data-act="cset" data-k="settimane" data-v="1">+</button><small>settimane, 2 giornate ciascuna</small></div>
+      <button data-act="cset" data-k="settimane" data-v="1">+</button><small>settimane, ${giornateSettimanali(c)} giornat${giornateSettimanali(c)===1?"a":"e"} ciascuna</small></div>
     <p class="note">${giornateChiuse(c)} giornat${giornateChiuse(c)===1?"a":"e"} su ${giornatePreviste(c)} previste.</p>
     <h2 style="margin-top:18px">Data della Final 8</h2>
     <div class="row2" style="max-width:420px">

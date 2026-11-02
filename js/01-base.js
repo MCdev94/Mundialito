@@ -3,6 +3,8 @@
 const APP_GENERATION = "gone-padel-cup-2026-11-02";
 const APP_STRUCTURE = "male-divisions-v1";
 const KEY = "gone-padel-cup.v2";
+const REGOLE_BASE = {maschile:{soglia:8,bonus:5,settimane:10},
+  femminile:{soglia:4,bonus:5,settimane:7}, misto:{soglia:5,bonus:5,settimane:7}};
 const regolePronte = () => D.settings.regolePronte === true;
 const divisioneMaschile = ch => ch.type === "maschile" && ["avanzato", "intermedio"].includes(ch.divisione);
 const eventiAbilitati = (ch = C()) => regolePronte() || ["maschile", "femminile", "misto"].includes(ch.type);
@@ -61,9 +63,9 @@ function pulisciDatiPrecedenti(){
   }
 }
 function fresh(){
-  const d = {v:2, settings:{campi:5, generation:APP_GENERATION, structure:APP_STRUCTURE, regolePronte:false, firma:"GonéPadelCup"}, players:[], champs:[], albo:[], cur:null};
+  const d = {v:2, settings:{campi:5, generation:APP_GENERATION, structure:APP_STRUCTURE, regolePronte:true, firma:"GonéPadelCup"}, players:[], champs:[], albo:[], cur:null};
   d.champs.push({id:uid(), name:"GonéPadelCup Maschile Avanzato", ed:"", type:"maschile", divisione:"avanzato",
-    soglia:0, bonus:0, carry:{}, events:[]});
+    ...REGOLE_BASE.maschile, carry:{}, events:[]});
   d.cur = d.champs[0].id;
   return d;
 }
