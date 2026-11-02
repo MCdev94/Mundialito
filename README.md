@@ -1,6 +1,8 @@
 # GonéPadelCup
 
-GonéPadelCup: nuova competizione maschile, femminile e mista. Dal 2 novembre 2026 i giocatori sono conservati, mentre partite, punti, presenze, finali, bonus e vittorie ripartono da zero. Le nuove regole sono in attesa di configurazione.
+GonéPadelCup: maschile Avanzato e Intermedio, femminile e misto. I due campionati maschili sono indipendenti: la partecipazione deriva dai nomi inseriti manualmente negli eventi, senza attribuire un livello alle persone. Lo stesso giocatore può partecipare a entrambi. Punteggi, bonus e finali sono ancora in attesa delle nuove regole.
+
+Eventi maschili creati soltanto dal gestore. Orari precompilati e modificabili: martedì Avanzato 20:00–21:30 e Intermedio 21:30–23:00; sabato Avanzato 14:00–15:30 e Intermedio 15:30–17:00. Negli altri giorni l'orario è manuale.
 
 App statica pubblicata con GitHub Pages, dati su Supabase. Nessuna compilazione: i file del repository sono esattamente quelli che il browser carica.
 
@@ -11,7 +13,7 @@ App statica pubblicata con GitHub Pages, dati su Supabase. Nessuna compilazione:
 | `index.html` | La pagina: struttura, barra in basso, caricamento degli script |
 | `css/style.css` | Tutto lo stile, tema chiaro e scuro |
 | `js/01-base.js` | Stato condiviso, utilità, salvataggio sul telefono |
-| `js/02-punteggi.js` | Scala dei punti, bonus presenze, classifica, i tre tornei, albo d'oro |
+| `js/02-punteggi.js` | Punteggi, quattro campionati, partecipazioni, classifica e albo d'oro |
 | `js/03-tabellone.js` | Tabellone per somma punti, turni della finale, abbinamenti automatici |
 | `js/04-schermate.js` | Le schermate: Giornate, giornata aperta, Classifica, Giocatori, Altro |
 | `js/05-fogli.js` | I pannelli a comparsa: tornei, scheda giocatore, nuova giornata, decreto campioni, stampe |
@@ -30,12 +32,13 @@ Gli script sono normali file JavaScript che condividono lo stesso ambiente e van
 ## Regole da rispettare quando si modifica
 
 - **Nuovo file JavaScript**: va aggiunto sia in `index.html` sia nell'elenco `GUSCIO` di `sw.js`, altrimenti offline non c'è.
-- **Versione dei dati**: ogni riga mandata al database porta `v = VERSIONE_DATI` (attualmente 4). Il database rifiuta versioni inferiori a 4; una policy restrittiva richiede inoltre la generazione corrente nelle richieste dei client autenticati, anche per le cancellazioni.
+- **Versione dei dati**: ogni riga mandata al database porta `v = VERSIONE_DATI` (attualmente 5). Il database rifiuta versioni inferiori a 5; una policy restrittiva richiede inoltre generazione e struttura correnti nelle richieste dei client autenticati, anche per le cancellazioni. Questo impedisce alle vecchie versioni di riunire i due campionati maschili.
 - **Il telefono del gestore comanda solo se è già sincronizzato**: un dispositivo che non ha mai completato una sincronizzazione butta la sua coda e prende i dati dal database. È la regola che protegge i dati quando il gestore cambia telefono.
 - **Il bonus non si scrive nei punti**: nel database restano i punti fatti in campo; il bonus si applica sopra con soglia e punti del riquadro BONUS. Così cambiando i numeri o annullando una giornata tutto si ricalcola giusto.
 - **Nessun albo incorporato**: vittorie e stelle derivano soltanto dai dati della nuova competizione.
 - **Separazione delle competizioni**: memoria locale e coda nuove; i backup precedenti non si importano. Il database ammette le scritture soltanto dai client con la nuova generazione, oltre all'accesso autenticato già richiesto.
-- **Nuove regole**: `settings.regolePronte` resta `false` fino alla prossima configurazione. La gestione dell'anagrafica resta disponibile.
+- **Nuove regole**: `settings.regolePronte` resta `false` fino alla prossima configurazione. Anagrafica, creazione manuale degli eventi maschili e scelta dei partecipanti sono disponibili; le operazioni che attribuiscono punti restano bloccate.
+- **Divisioni**: la chiave del campionato è `type` + `divisione`. Non unire i maschili soltanto perché hanno lo stesso `type`. L'albo usa `champ_id` per distinguere le edizioni delle due categorie.
 
 ## Test
 
@@ -49,7 +52,7 @@ I test caricano gli script dell'app in un ambiente isolato e controllano scala d
 
 ## Database (Supabase)
 
-Tabelle: `players` (anagrafica), `champs` (i tre tornei, con punti e presenze in `carry`, soglia e bonus, data e orario delle finali), `events` (giornate aperte e finale a 8), `settings` (impostazioni e locandine), `albo` (vincitori di ogni edizione). Lettura per tutti, scrittura solo per chi ha fatto l'accesso. La vista `classifica` restituisce la classifica di ogni torneo con bonus e totale già calcolati.
+Tabelle: `players` (anagrafica senza livello personale), `champs` (quattro campionati; il maschile è distinto dalla colonna `divisione`), `events` (eventi associati al proprio `champ_id`), `settings` (impostazioni e locandine), `albo` (vincitori di ogni edizione e campionato). Lettura per tutti, scrittura autenticata soltanto con la struttura corrente. La vista `classifica` resta distinta per campionato.
 
 La chiave in `08-sync.js` è quella *publishable*: è pubblica per definizione e può stare nel codice. La chiave segreta non va mai messa nel repository.
 

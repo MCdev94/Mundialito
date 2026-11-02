@@ -31,6 +31,8 @@ button{cursor:pointer;}
 .top__row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .top__title{margin:0;font-size:21px;font-weight:700;letter-spacing:-.01em;}
 .top__meta{margin:2px 0 0;color:var(--ink-soft);font-size:13.5px;}
+.divisioni{margin-top:12px;}
+.stato-partecipazione{display:block;color:var(--ink-soft);font-size:12px;font-weight:400;margin-top:3px;}
 .aggiorna-classifica{display:grid;place-items:center;flex:none;width:44px;height:44px;
   padding:10px;border:0;border-radius:50%;background:transparent;color:var(--court);}
 .aggiorna-classifica svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;
@@ -70,6 +72,7 @@ button{cursor:pointer;}
 .btn--sm{padding:10px 14px;font-size:14.5px;width:auto;display:inline-block;}
 .row2{display:flex;gap:8px;}
 .row2 > *{flex:1;}
+.row2 > input{min-width:0;}
 
 .fld{display:block;margin-bottom:12px;}
 .fld span{display:block;font-size:13.5px;color:var(--ink-soft);margin-bottom:5px;}
@@ -88,9 +91,9 @@ button{cursor:pointer;}
 .plist{list-style:none;margin:10px 0 0;padding:0;}
 .plist li{display:flex;align-items:center;gap:10px;padding:0;border-bottom:1px solid var(--line);}
 .plist li:last-child{border-bottom:0;}
-.ptap{flex:1;display:flex;align-items:center;gap:10px;padding:12px 2px;border:0;
+.ptap{flex:1;min-width:0;width:100%;display:flex;align-items:center;gap:10px;padding:12px 2px;border:0;
   background:transparent;text-align:left;}
-.ptap .nm{flex:1;font-size:16px;}
+.ptap .nm{flex:1;min-width:0;overflow-wrap:anywhere;font-size:16px;}
 .ptap .pt{font-size:13.5px;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
 .sx{font-size:11px;font-weight:700;color:var(--ink-soft);border:1px solid var(--line);
   border-radius:5px;padding:0 4px;}

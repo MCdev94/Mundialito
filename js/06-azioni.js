@@ -30,6 +30,19 @@ document.addEventListener("submit", e => {
 });
 
 document.addEventListener("input", e => {
+  if(sheet && sheet.tipo === "event" && canWrite()){
+    if(e.target.matches('[data-act="eventname"]')) sheet.tmp.name = e.target.value;
+    if(e.target.matches('[data-act="eventora"]')) sheet.tmp.ora = e.target.value;
+    if(e.target.matches('[data-act="eventdate"]')){
+      sheet.tmp.date = e.target.value;
+      if(divisioneMaschile(C())){
+        sheet.tmp.ora = orarioEvento(C(),sheet.tmp.date);
+        document.getElementById("ev_ora").value = sheet.tmp.ora;
+        const nota = document.getElementById("notaOrario");
+        if(nota) nota.textContent = sheet.tmp.ora ? "Orario precompilato e modificabile." : "Giorno diverso da martedì e sabato: imposta manualmente l'orario.";
+      }
+    }
+  }
   if(e.target.matches('[data-act="search"]')){
     search = e.target.value; const pos = e.target.selectionStart; render();
     const n = document.getElementById("q"); if(n){ n.focus(); n.setSelectionRange(pos,pos); }
@@ -71,13 +84,20 @@ document.addEventListener("click", e => {
   }
   const azioniTorneo = new Set(["newev","editev","saveev","finale8","board","auto","assegna","turno","incorona","decreta","cset"]);
   if(!regolePronte() && azioniTorneo.has(a)){
-    toast("Le nuove regole devono ancora essere configurate."); return;
+    if(!eventiAbilitati(c) || !["newev","editev","saveev"].includes(a)){
+      toast("Le nuove regole devono ancora essere configurate."); return;
+    }
   }
 
   if(a === "home"){ openEvent = null; render(); return; }
   if(a === "closesheet"){ sheet = null; render(); return; }
 
   /* campionati */
+  if(a === "divisionemaschile"){
+    const nuovo = D.champs.find(x => x.type === "maschile" && x.divisione === el.dataset.v);
+    if(!nuovo) return;
+    D.cur = nuovo.id; sheet = null; openEvent = null; search = ""; salvaLocale(); render(); return;
+  }
   if(a === "champs"){ sheet = {tipo:"champs"}; render(); return; }
   if(a === "setchamp"){ D.cur = el.dataset.id; sheet = null; openEvent = null; tab = "giornate"; search = ""; save(); render(); return; }
   if(a === "newchamp"){ return; }
@@ -262,7 +282,7 @@ document.addEventListener("click", e => {
     if(p1 === p2){ toast(c.type === "femminile" ? "Servono due giocatrici diverse" : "Servono due giocatori diversi"); return; }
     if(c.type === "misto" && P(p1).sex === P(p2).sex){ toast("Nel misto la coppia è una donna e un uomo"); return; }
     if(!ed){ toast("Scrivi il numero dell'edizione"); return; }
-    const gia = (D.albo || []).find(x => x.tipo === c.type && String(x.edizione) === ed);
+    const gia = albumDi(c).find(x => String(x.edizione) === ed);
     if(gia && !confirm(`Per la ${ed}ª edizione c'è già ${nomeAlbo(gia,0)} e ${nomeAlbo(gia,1)}. Li sostituisco?`)) return;
     D.albo = (D.albo || []).filter(x => x !== gia);
     const rec = {id:uid(), champ_id:c.id, tipo:c.type, edizione:ed, data, giocatori:[p1,p2], nomi:[nm(p1), nm(p2)]};

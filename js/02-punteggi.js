@@ -70,7 +70,9 @@ function eventPoints(ev){
 }
 const matchDone = m => (m.pb === null || m.pb === undefined) || m.winner === "a" || m.winner === "b";
 const evReady = ev => ev.matches.length > 0 && ev.matches.every(matchDone);
-const TORNEI = [["maschile","GonéPadelCup Maschile",0], ["femminile","GonéPadelCup Femminile",0], ["misto","GonéPadelCup Misto",0]];
+const TORNEI = [["maschile","GonéPadelCup Maschile Avanzato",0,"avanzato"],
+  ["maschile","GonéPadelCup Maschile Intermedio",0,"intermedio"],
+  ["femminile","GonéPadelCup Femminile",0,null], ["misto","GonéPadelCup Misto",0,null]];
 function pesoTorneo(c){ return Object.keys(c.carry || {}).length + (c.events || []).length * 10 + (c.base || 0); }
 function firmaCarry(c){
   return Object.keys(c.carry || {}).map(id => {
@@ -78,14 +80,15 @@ function firmaCarry(c){
     return ((D.players.find(p => p.id === id) || {}).name || id).toLowerCase() + ":" + (v.pts||0) + "/" + (v.pres||0);
   }).sort().join("|");
 }
-/* lascia esattamente un torneo per tipo; ritorna true se ha dovuto sistemare qualcosa */
+/* Un campionato per categoria: le due divisioni maschili non si devono mai unire. */
 function normalizzaTornei(){
   let cambiato = false;
-  const nuovi = TORNEI.map(([tipo, nome, soglia]) => {
-    const gruppo = D.champs.filter(c => c.type === tipo).sort((a,b) => pesoTorneo(b) - pesoTorneo(a));
+  const nuovi = TORNEI.map(([tipo, nome, soglia, divisione]) => {
+    const gruppo = D.champs.filter(c => c.type === tipo && (tipo !== "maschile" || (c.divisione || "avanzato") === divisione))
+      .sort((a,b) => pesoTorneo(b) - pesoTorneo(a));
     let main = gruppo[0];
     if(!main){
-      main = {id:uid(), name:nome, ed:"", type:tipo, soglia, bonus:0, settimane:8, base:0,
+      main = {id:uid(), name:nome, ed:"", type:tipo, divisione, soglia, bonus:0, settimane:8, base:0,
               carry:{}, bonusAss:null, ultima:null, events:[]};
       cambiato = true;
     }
@@ -107,12 +110,14 @@ function normalizzaTornei(){
       if(!main.bonusAss && x.bonusAss) main.bonusAss = x.bonusAss;
     });
     if(main.name !== nome){ main.name = nome; cambiato = true; }
+    if((main.divisione || null) !== divisione){ main.divisione = divisione; cambiato = true; }
     return main;
   });
   if(D.champs.length !== nuovi.length || D.champs.some((c,i) => c !== nuovi[i])) cambiato = true;
   D.champs = nuovi;
   if(!D.champs.some(c => c.id === D.cur)){ D.cur = D.champs[0].id; cambiato = true; }
   (D.albo || []).forEach(a => {
+    if(D.champs.some(c => c.id === a.champ_id)) return;
     const m = D.champs.find(c => c.type === a.tipo);
     if(m && a.champ_id !== m.id){ a.champ_id = m.id; cambiato = true; }
   });
@@ -142,13 +147,13 @@ function stelle(id){
   const v = vittorieDi(id).sort((a,b) => (ORDINE_TIPI[a.tipo] - ORDINE_TIPI[b.tipo]) || ((parseInt(a.edizione)||0) - (parseInt(b.edizione)||0)));
   if(!v.length) return "";
   return `<span class="stelle">${v.map(a => {
-    const ch = D.champs.find(c => c.type === a.tipo);
+    const ch = D.champs.find(c => c.id === a.champ_id) || D.champs.find(c => c.type === a.tipo);
     return `<span class="stella stella--${a.tipo}" title="${esc((ch ? ch.name : a.tipo) + " · " + a.edizione + "ª edizione")}">★</span>`;
   }).join("")}</span>`;
 }
 function nomeAlbo(a, i){ const id = (a.giocatori || [])[i]; const p = id && D.players.find(x => x.id === id); return p ? p.name : ((a.nomi || [])[i] || "?"); }
 function albumDi(ch){
-  return alboCompleto().filter(a => a.tipo === ch.type)
+  return alboCompleto().filter(a => a.champ_id ? a.champ_id === ch.id : a.tipo === ch.type && (ch.type !== "maschile" || ch.divisione === "avanzato"))
     .sort((x,y) => (parseInt(y.edizione,10) || 0) - (parseInt(x.edizione,10) || 0));
 }
 function vincitoreFinale(ev){
@@ -208,7 +213,8 @@ function classifica(ch){
 
 /* Una sola selezione per schermata, stampe e creazione della Final 8. */
 function classificaFinal8(ch = C()){
-  const lista = classifica(ch).filter(r => r.pres > 0);
+  const lista = classifica(ch).filter(r => divisioneMaschile(ch) ? partecipaAlCampionato(r.id, ch) : r.pres > 0);
+  if(!regolePronte()) return lista.map((r,i) => ({...r,pos:i+1,final8:false}));
   const qualificati = new Set((ch.type === "misto"
     ? ["M", "F"].flatMap(sesso => lista.filter(r => r.sex === sesso).slice(0, 4))
     : lista.slice(0, 8)).map(r => r.id));
@@ -216,6 +222,15 @@ function classificaFinal8(ch = C()){
     ? [...lista.filter(r => qualificati.has(r.id)), ...lista.filter(r => !qualificati.has(r.id))]
     : lista;
   return ordinata.map((r, i) => ({...r, pos:i + 1, final8:qualificati.has(r.id)}));
+}
+function partecipaAlCampionato(id, ch){
+  const v = (ch.carry || {})[id];
+  return !!(v && ((v.pres || 0) > 0 || (v.pts || 0) > 0))
+    || (ch.events || []).some(e => (e.presenti || []).includes(id) || (e.pairs || []).some(pr => pr.includes(id)));
+}
+function partecipazioniMaschili(id){
+  return D.champs.filter(c => divisioneMaschile(c) && partecipaAlCampionato(id,c))
+    .map(c => nomeDivisione(c.divisione)).join(" · ") || "Da classificare";
 }
 function coppieFinal8(ch = C()){
   const top = classificaFinal8(ch).filter(r => r.final8);

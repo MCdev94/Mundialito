@@ -4,7 +4,7 @@
 const SB_URL = "https://fmjraciijqjelnthxwhq.supabase.co";
 const SB_KEY = "sb_publishable_WP0-Q7i10-F2RTJgCCwAiw_tcEdHHox";
 const QKEY = KEY + ".coda", GKEY = KEY + ".gestore", RKEY = KEY + ".rev";
-const VERSIONE_DATI = 4;
+const VERSIONE_DATI = 5;
 
 let SB = null, SESSION = null, QUEUE = [], SNAP = null, flushing = false;
 let SYNC = {stato:"avvio", msg:""};
@@ -23,7 +23,7 @@ function qSave(){ ls(QKEY, JSON.stringify(QUEUE)); }
 function rowsOf(st){
   const out = {players:[], champs:[], events:[], settings:[], albo:[]};
   st.players.forEach(p => out.players.push({id:p.id, name:p.name, sex:p.sex || "M", archived:!!p.archived, v:VERSIONE_DATI}));
-  st.champs.forEach((c,i) => out.champs.push({id:c.id, name:c.name, ed:c.ed || "", type:c.type,
+  st.champs.forEach((c,i) => out.champs.push({id:c.id, name:c.name, ed:c.ed || "", type:c.type, divisione:c.divisione || null,
     soglia:c.soglia, bonus:c.bonus, settimane:c.settimane || 8, giornate_base:c.base || 0,
     data_finale:c.dataFinale || null, ora_finale:c.oraFinale || null,
     bonus_ass:c.bonusAss || null, ultima:c.ultima || null, carry:c.carry || {}, ordine:i, v:VERSIONE_DATI}));
@@ -32,7 +32,7 @@ function rowsOf(st){
     mult:e.mult || 1, campi:e.campi || 5, status:e.status || "bozza", finale:!!e.finale,
     presenti:e.presenti || [], pairs:e.pairs || [], matches:e.matches || [], seeds:e.seeds || {},
     storico:e.storico || [], ordine:e.ordine || null, punti:e.punti || null, created:e.created || 0, v:VERSIONE_DATI})));
-  out.settings.push({id:1, data:{...st.settings, generation:APP_GENERATION}, v:VERSIONE_DATI});
+  out.settings.push({id:1, data:{...st.settings, generation:APP_GENERATION, structure:APP_STRUCTURE}, v:VERSIONE_DATI});
   out.albo = (st.albo || []).map(a => ({id:a.id, champ_id:a.champ_id || null, tipo:a.tipo,
     edizione:String(a.edizione), data:a.data || null, giocatori:a.giocatori || [], nomi:a.nomi || [], v:VERSIONE_DATI}));
   return out;
@@ -42,7 +42,7 @@ function stateFromRows(r){
     players:[], champs:[], cur:null};
   d.players = r.players.map(p => ({id:p.id, name:p.name, sex:p.sex || "M", archived:!!p.archived}));
   d.champs = [...r.champs].sort((a,b) => (a.ordine || 0) - (b.ordine || 0)).map(c => ({
-    id:c.id, name:c.name, ed:c.ed || "", type:c.type, soglia:c.soglia, bonus:c.bonus,
+    id:c.id, name:c.name, ed:c.ed || "", type:c.type, divisione:c.divisione || null, soglia:c.soglia, bonus:c.bonus,
     settimane:c.settimane || 8, base:c.giornate_base || 0, dataFinale:c.data_finale || "", oraFinale:c.ora_finale || "",
     bonusAss:c.bonus_ass || null, ultima:c.ultima || null,
     carry:c.carry || {}, events:[]}));
@@ -119,6 +119,8 @@ async function syncNow(silenzioso){
     let r = await pull();
     if(!r.settings[0] || r.settings[0].data.generation !== APP_GENERATION)
       throw new Error("La nuova competizione è in preparazione. Riprova tra poco.");
+    if(r.settings[0].data.structure !== APP_STRUCTURE)
+      throw new Error("I nuovi campionati sono in preparazione. Riprova tra poco.");
     let vuoto = !r.champs.length && !r.players.length;
     // un dispositivo che non ha mai completato una sincronizzazione non ha niente da imporre:
     // se il database ha già i dati, la sua coda è vecchia e va scartata
@@ -165,7 +167,7 @@ async function initSync(){
   }
   try{
     SB = window.supabase.createClient(SB_URL, SB_KEY, {
-      global:{headers:{"x-app-generation":APP_GENERATION}}
+      global:{headers:{"x-app-generation":APP_GENERATION,"x-app-structure":APP_STRUCTURE}}
     });
     const {data} = await SB.auth.getSession();
     SESSION = (data && data.session) || null;
@@ -207,5 +209,5 @@ function testoSync(){
   if(canWrite()) return "Modalità gestore: ogni modifica finisce subito sul database." + coda;
   return "Sola lettura: vedi i dati aggiornati ma non puoi modificarli.";
 }
-const AZIONI_LETTURA = new Set(["home","closesheet","champs","setchamp","openev","step","player","albovedi",
+const AZIONI_LETTURA = new Set(["home","closesheet","champs","setchamp","divisionemaschile","openev","step","player","albovedi",
   "loca","stampaclass","loca-png","loca-pdf","loca-share","shareclass","shareev","export","sync","login","logout","dologin"]);

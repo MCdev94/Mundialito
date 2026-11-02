@@ -16,6 +16,15 @@ function champBtn(){
   const c = C();
   return `<button class="champsel" data-act="champs"><span class="${dotCls(c.type)}"></span>${esc(c.name)} ▾</button>`;
 }
+function filtriMaschili(){
+  if(!divisioneMaschile(C())) return "";
+  return `<div class="chips divisioni" role="group" aria-label="Campionato maschile">
+    ${["avanzato","intermedio"].map(d => `<button class="chip" data-act="divisionemaschile" data-v="${d}" aria-pressed="${C().divisione === d}">${nomeDivisione(d)}</button>`).join("")}</div>`;
+}
+function programmaMaschile(ch = C()){
+  return ch.divisione === "avanzato" ? "Martedì 20:00–21:30 · Sabato 14:00–15:30"
+    : "Martedì 21:30–23:00 · Sabato 15:30–17:00";
+}
 
 /* --- giornate --- */
 function renderGiornate(){
@@ -26,8 +35,9 @@ function renderGiornate(){
     <div class="top__row"><div>
       <h1 class="top__title">Giornate</h1>
       <p class="top__meta">${giornateChiuse(c)} giocate${list.length ? " · " + list.length + " in corso" : ""}</p>
-    </div></div></header>
-  ${!regolePronte() ? `<p class="empty">GonéPadelCup è pronta: giocatori conservati e classifiche azzerate. Le nuove regole saranno configurate nel prossimo aggiornamento.</p>` : canWrite() ? `<button class="btn" data-act="newev">Nuova giornata</button>`
+    </div></div>${filtriMaschili()}</header>
+  ${divisioneMaschile(c) ? `<p class="hint">${programmaMaschile(c)}. Partecipanti scelti dal gestore per ogni evento.</p>` : ""}
+  ${!eventiAbilitati(c) ? `<p class="empty">GonéPadelCup è pronta: giocatori conservati e classifiche azzerate. Le nuove regole saranno configurate nel prossimo aggiornamento.</p>` : canWrite() ? `<button class="btn" data-act="newev">Nuova giornata</button>`
     : `<p class="empty">Stai guardando in sola lettura. Per gestire le giornate entra da Altro → Accedi come gestore.</p>`}
   <div class="block">
   ${list.length ? list.map(e => `
@@ -79,7 +89,9 @@ function renderEvento(){
         <span class="tick">✓</span><span class="nm">${esc(p.name)}</span>
         ${misto?`<span class="sx">${p.sex}</span>`:""}
         <span class="pt">${t[p.id]?t[p.id].pts:0} pt</span></button></li>`).join("")}</ul></div>
-    <div class="block"><button class="btn" data-act="step" data-v="coppie" ${presenti.length>=4?"":"disabled"}>Passa alle coppie</button></div>`;
+    <div class="block">${regolePronte()
+      ? `<button class="btn" data-act="step" data-v="coppie" ${presenti.length>=4?"":"disabled"}>Passa alle coppie</button>`
+      : `<p class="note">Partecipanti salvati. Abbinamenti e punteggi saranno configurati nella prossima fase.</p><button class="btn btn--quiet" data-act="home">Torna agli eventi</button>`}</div>`;
   }
 
   if(step === "coppie"){
@@ -242,7 +254,7 @@ function renderClassifica(){
     <button type="button" class="aggiorna-classifica" data-act="sync" aria-label="Aggiorna classifica"
       title="Aggiorna classifica" aria-busy="${SYNC.stato === "corso"}" ${SYNC.stato === "corso" ? "disabled" : ""}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17"/></svg>
-    </button></div></header>
+    </button></div>${filtriMaschili()}</header>
 
   ${regolePronte() ? `<section class="bonus">
     <h2 class="bonus__t">BONUS</h2>
@@ -260,6 +272,7 @@ function renderClassifica(){
   <button class="btn" style="margin-top:16px" data-act="stampaclass">Crea l'immagine della classifica</button>
   <button class="btn btn--ghost" data-act="shareclass">Copia la classifica come testo</button>
   ${(() => { const f = finaleDi(c);
+    if(!regolePronte()) return "";
     if(f) return `<button class="btn btn--quiet" data-act="openev" data-id="${f.id}">Apri la finale a 8</button>`;
     if(!coppieFinal8(c).length) return `<p class="note">${c.type === "misto" ? "Servono almeno 4 uomini e 4 donne con presenze" : "Servono almeno 8 " + partecipanti(c) + " con presenze"} per creare la Final 8.</p>`;
     return `<button class="btn btn--quiet" data-act="finale8">Crea la finale a 8</button>`;
@@ -277,7 +290,7 @@ function renderAlbo(c){
         <span class="albo__data">${a.data ? dataIt(a.data) : ""}</span>
       </button>`).join("")
     : `<p class="albo__vuoto">Nessuna edizione ancora. I campioni compariranno qui dopo la finale.</p>`}
-    ${canWrite() ? `<button class="btn btn--oro" data-act="decreta" style="margin-top:12px">🏆 Decreta i campioni</button>` : ""}
+    ${canWrite() && regolePronte() ? `<button class="btn btn--oro" data-act="decreta" style="margin-top:12px">🏆 Decreta i campioni</button>` : ""}
   </section>`;
 }
 function notaBonus(c, premiati){
@@ -286,8 +299,8 @@ function notaBonus(c, premiati){
     + (premiati ? `Finora l'hanno raggiunto in ${premiati}: hanno il punteggio nel bollino rosso.` : "Per ora non l'ha raggiunto nessuno.");
 }
 function tabellaClassifica(list = classificaFinal8(), ch = C()){
-  if(!list.length) return `<p class="empty">Ancora nessuna giornata chiusa qui.</p>`;
-  return `<p class="hint">Final 8: ${ch.type === "misto" ? "primi 4 uomini e prime 4 donne" : "prime 8 posizioni"} in evidenza.</p>
+  if(!list.length) return `<p class="empty">${divisioneMaschile(ch) ? "Nessun partecipante ancora. Aggiungi i nomi a un evento di questo campionato." : "Ancora nessuna giornata chiusa qui."}</p>`;
+  return `<p class="hint">${regolePronte() ? `Final 8: ${ch.type === "misto" ? "primi 4 uomini e prime 4 donne" : "prime 8 posizioni"} in evidenza.` : "Partecipanti a questo campionato. Punteggi in attesa delle nuove regole."}</p>
   <table class="table table--classifica"><thead><tr><th>${ch.type === "femminile" ? "Giocatrice" : "Giocatore"}</th><th>Punti</th><th>Presenze</th></tr></thead>
    <tbody>${list.map((r,i) => `<tr class="rowtap ${r.final8?"final8":""}" data-act="player" data-id="${r.id}">
       <td><span class="nmc"><span class="pos">${i+1}</span><span class="nome-classifica">${esc(r.name)} ${stelle(r.id)}</span></span></td>
@@ -307,7 +320,7 @@ function renderGiocatori(){
     <p class="top__meta">${list.length} disponibili per questo campionato${fuori?` · ${fuori} ritirati`:""}</p>
     ${alboCompleto().length ? `<p class="legenda"><span><span class="stella stella--maschile">★</span> Maschile</span>
       <span><span class="stella stella--femminile">★</span> Femminile</span>
-      <span><span class="stella stella--misto">★</span> Misto</span></p>` : ""}</div></div></header>
+      <span><span class="stella stella--misto">★</span> Misto</span></p>` : ""}</div></div>${filtriMaschili()}</header>
   <label class="fld"><input id="q" placeholder="Cerca un nome" value="${esc(search)}" data-act="search" autocomplete="off"></label>
   <form class="row2" data-act="addp2">
     <input id="newp2" placeholder="${c.type === "femminile" ? "Nuova giocatrice" : "Nuovo giocatore"}" autocomplete="off" enterkeyhint="done"
@@ -317,7 +330,7 @@ function renderGiocatori(){
     <button class="btn btn--ghost btn--sm" type="submit" style="flex:0 0 auto;">Aggiungi</button>
   </form>
   <ul class="plist">${list.map(p=>`<li><button class="ptap" data-act="player" data-id="${p.id}">
-    <span class="nm">${esc(p.name)} ${stelle(p.id)}</span>${c.type==="misto"?`<span class="sx">${p.sex}</span>`:""}
+    <span class="nm">${esc(p.name)} ${stelle(p.id)}${p.sex === "M" && divisioneMaschile(c) ? `<small class="stato-partecipazione">${partecipazioniMaschili(p.id)}</small>` : ""}</span>${c.type==="misto"?`<span class="sx">${p.sex}</span>`:""}
     <span class="pt">${t[p.id].pts} pt · ${t[p.id].pres} pres.</span></button></li>`).join("")}</ul>`;
 }
 

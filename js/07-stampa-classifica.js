@@ -110,14 +110,18 @@ async function drawClassifica(ch){
   const pagine = [];
   const blocchi = [];
   const finalisti = lista.filter(r => r.final8), resto = lista.filter(r => !r.final8);
-  blocchi.push({sx:finalisti, dx:resto.slice(0,12)});
-  for(let i=12; i<resto.length; i+=26)
-    blocchi.push({sx:resto.slice(i,i+13), dx:resto.slice(i+13,i+26)});
+  if(!finalisti.length){
+    for(let i=0; i<lista.length; i+=26) blocchi.push({sx:lista.slice(i,i+13), dx:lista.slice(i+13,i+26)});
+  } else {
+    blocchi.push({sx:finalisti, dx:resto.slice(0,12)});
+    for(let i=12; i<resto.length; i+=26)
+      blocchi.push({sx:resto.slice(i,i+13), dx:resto.slice(i+13,i+26)});
+  }
 
   blocchi.forEach((bl, idx) => {
     const W = 1080, HEAD = 356, LEG = 150;
     const primaPag = idx === 0;
-    const hSx = primaPag ? 72 : 50, hDx = 50;
+    const hSx = primaPag && finalisti.length ? 72 : 50, hDx = 50;
     const conFinale = !!dataF && idx === blocchi.length - 1 && !bl.dx.length;
     const corpo = Math.max(bl.sx.length * hSx, bl.dx.length * hDx, conFinale ? 400 : 240);
     const H = HEAD + corpo + LEG;

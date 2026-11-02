@@ -1,8 +1,19 @@
 /* GonéPadelCup — Stato condiviso, utilità, salvataggio locale */
 "use strict";
 const APP_GENERATION = "gone-padel-cup-2026-11-02";
-const KEY = "gone-padel-cup.v1";
+const APP_STRUCTURE = "male-divisions-v1";
+const KEY = "gone-padel-cup.v2";
 const regolePronte = () => D.settings.regolePronte === true;
+const divisioneMaschile = ch => ch.type === "maschile" && ["avanzato", "intermedio"].includes(ch.divisione);
+const eventiAbilitati = (ch = C()) => regolePronte() || divisioneMaschile(ch);
+const nomeDivisione = d => d === "intermedio" ? "Intermedio" : "Avanzato";
+function orarioEvento(ch, data){
+  if(!divisioneMaschile(ch) || !/^\d{4}-\d{2}-\d{2}$/.test(data || "")) return "";
+  const giorno = new Date(data + "T12:00:00").getDay();
+  if(giorno === 2) return ch.divisione === "avanzato" ? "20:00–21:30" : "21:30–23:00";
+  if(giorno === 6) return ch.divisione === "avanzato" ? "14:00–15:30" : "15:30–17:00";
+  return "";
+}
 const app = document.getElementById("app");
 const tabsEl = document.getElementById("tabs");
 
@@ -33,7 +44,7 @@ function save(){
   salvaLocale();
   clearTimeout(tPush); tPush = setTimeout(() => { try{ pushDiff(); }catch(e){} }, 600);
 }
-function backupCompatibile(d){ return !!(d && Array.isArray(d.players) && Array.isArray(d.champs) && d.settings && d.settings.generation === APP_GENERATION); }
+function backupCompatibile(d){ return !!(d && Array.isArray(d.players) && Array.isArray(d.champs) && d.settings && d.settings.generation === APP_GENERATION && d.settings.structure === APP_STRUCTURE); }
 function load(){ try{ const r = localStorage.getItem(KEY); if(r){ const d = JSON.parse(r); if(backupCompatibile(d)) return d; } }catch(e){} return null; }
 function pulisciDatiPrecedenti(){
   const precedente = ["mundi", "alito.v2"].join("");
@@ -42,8 +53,8 @@ function pulisciDatiPrecedenti(){
   }
 }
 function fresh(){
-  const d = {v:2, settings:{campi:5, generation:APP_GENERATION, regolePronte:false, firma:"GonéPadelCup"}, players:[], champs:[], albo:[], cur:null};
-  d.champs.push({id:uid(), name:"GonéPadelCup Maschile", ed:"", type:"maschile",
+  const d = {v:2, settings:{campi:5, generation:APP_GENERATION, structure:APP_STRUCTURE, regolePronte:false, firma:"GonéPadelCup"}, players:[], champs:[], albo:[], cur:null};
+  d.champs.push({id:uid(), name:"GonéPadelCup Maschile Avanzato", ed:"", type:"maschile", divisione:"avanzato",
     soglia:0, bonus:0, carry:{}, events:[]});
   d.cur = d.champs[0].id;
   return d;

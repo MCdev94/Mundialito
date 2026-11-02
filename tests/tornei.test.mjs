@@ -10,16 +10,16 @@ function app(champs, players = [{ id:"a", name:"Anna", sex:"M" }]){
   return a;
 }
 
-test("restano sempre esattamente tre tornei, uno per tipo", () => {
+test("restano quattro campionati, con due divisioni maschili indipendenti", () => {
   const a = app([]);
-  assert.deepEqual(a.run("D.champs.map(c => c.type)"), ["maschile", "femminile", "misto"]);
+  assert.deepEqual(a.run("D.champs.map(c => c.type)"), ["maschile", "maschile", "femminile", "misto"]);
   assert.deepEqual(a.run("D.champs.map(c => c.name)"),
-    ["GonéPadelCup Maschile", "GonéPadelCup Femminile", "GonéPadelCup Misto"]);
+    ["GonéPadelCup Maschile Avanzato", "GonéPadelCup Maschile Intermedio", "GonéPadelCup Femminile", "GonéPadelCup Misto"]);
 });
 
 test("un doppione vuoto viene eliminato", () => {
   const a = app([torneo("m1", "maschile", { a:{ pts:10, pres:1 } }), torneo("m2", "maschile")]);
-  assert.equal(a.run(`D.champs.filter(c => c.type === "maschile").length`), 1);
+  assert.equal(a.run(`D.champs.filter(c => c.type === "maschile").length`), 2);
   assert.deepEqual(a.run(`D.champs[0].carry.a`), { pts:10, pres:1 });
 });
 

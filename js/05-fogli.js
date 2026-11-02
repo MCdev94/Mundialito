@@ -40,12 +40,12 @@ function renderSheet(){
     const htmlVinte = vinte.length ? `<div class="block"><h2>Vittorie ${stelle(sheet.id)}</h2>
       ${vinte.map(a => { const comp = (a.giocatori||[]).find(x => x !== sheet.id);
         const nomeComp = comp ? nm(comp) : ((a.nomi||[]).find(n => n !== p.name) || "");
-        const ch = D.champs.find(c => c.type === a.tipo);
+        const ch = D.champs.find(c => c.id === a.champ_id) || D.champs.find(c => c.type === a.tipo);
         return `<p class="note" style="margin:6px 0">🏆 ${esc(ch ? ch.name : a.tipo)}, ${esc(a.edizione)}ª edizione — con ${esc(nomeComp)}</p>`; }).join("")}</div>` : "";
     const righe = [];
     D.champs.forEach(ch => {
       const t = totals(null, ch);
-      const r = t[sheet.id]; if(!r || (!r.campo && !r.pres)) return;
+      const r = t[sheet.id]; if(!r || (!r.campo && !r.pres && !partecipaAlCampionato(sheet.id,ch))) return;
       const pos = classificaFinal8(ch).findIndex(x => x.id === sheet.id) + 1;
       righe.push(`<tr><td>${esc(ch.name)}<br><span class="pt">${pos?`${pos}° posto`:""}</span></td>
         <td class="pts">${r.pts}${r.bonus ? `<br><span class="pt">di cui ${r.bonus} di bonus</span>` : ""}</td><td>${r.pres}</td></tr>`);
@@ -56,7 +56,7 @@ function renderSheet(){
         return `<tr><td>${esc(e.name)}<br><span class="pt">con ${esc(nm(comp))}</span></td><td class="pts">${pp[sheet.id]}</td></tr>`; });
     const altri = D.players.filter(x => x.id !== sheet.id && x.sex === p.sex && !x.archived)
       .sort((a,b) => a.name.localeCompare(b.name));
-    inner = `<h3>${esc(p.name)} ${stelle(sheet.id)}</h3><p class="hint">${p.sex === "F" ? "Donna" : "Uomo"}</p>
+    inner = `<h3>${esc(p.name)} ${stelle(sheet.id)}</h3><p class="hint">${p.sex === "F" ? "Donna" : "Uomo · " + partecipazioniMaschili(p.id)}</p>
       ${righe.length?`<table class="table"><thead><tr><th>Campionato</th><th>Punti</th><th>Pres.</th></tr></thead>
         <tbody>${righe.join("")}</tbody></table>`:`<p class="empty">Nessuna presenza registrata.</p>`}
       ${htmlVinte}
@@ -159,7 +159,7 @@ function renderSheet(){
   if(sheet.tipo === "campioni" || sheet.tipo === "albovoce"){
     const a = voceAlbo(sheet.id);
     if(!a){ sheet = null; return; }
-    const ch = D.champs.find(c => c.type === a.tipo);
+    const ch = D.champs.find(c => c.id === a.champ_id) || D.champs.find(c => c.type === a.tipo);
     inner = `<div class="festa">
         <div class="trofeo">🏆</div>
         <p class="festa__sopra">${sheet.tipo === "campioni" ? "I campioni del" : "Campioni del"}</p>
@@ -177,11 +177,14 @@ function renderSheet(){
 
   if(sheet.tipo === "event"){
     const ev = sheet.id ? EV(sheet.id) : null;
-    const v = ev || {name:"", date:oggi(), ora:""};
+    const v = {name:sheet.tmp.name ?? (ev && ev.name) ?? "", date:sheet.tmp.date ?? (ev && ev.date) ?? oggi(),
+      ora:sheet.tmp.ora ?? (ev && ev.ora) ?? orarioEvento(C(),sheet.tmp.date || oggi())};
     inner = `<h3>${ev?"Modifica giornata":"Nuova giornata"}</h3>
-      <label class="fld"><span>Nome</span><input id="ev_name" value="${esc(v.name)}" placeholder="${giornateChiuse()+1}ª giornata"></label>
-      <div class="row2"><label class="fld" style="flex:2"><span>Data</span><input id="ev_date" type="date" value="${v.date}"></label>
-        <label class="fld" style="flex:1"><span>Ora</span><input id="ev_ora" value="${esc(v.ora||"")}" placeholder="11:30"></label></div>
+      ${divisioneMaschile(C()) ? `<p class="hint">${nomeDivisione(C().divisione)} · ${programmaMaschile()}</p>` : ""}
+      <label class="fld"><span>Nome</span><input id="ev_name" data-act="eventname" value="${esc(v.name)}" placeholder="${giornateChiuse()+1}ª giornata"></label>
+      <div class="row2"><label class="fld" style="flex:2"><span>Data</span><input id="ev_date" data-act="eventdate" type="date" value="${v.date}"></label>
+        <label class="fld" style="flex:2"><span>Orario</span><input id="ev_ora" data-act="eventora" value="${esc(v.ora||"")}" placeholder="es. 20:00–21:30"></label></div>
+      ${divisioneMaschile(C()) ? `<p class="hint" id="notaOrario">${orarioEvento(C(),v.date) ? "Orario precompilato e modificabile." : "Giorno diverso da martedì e sabato: imposta manualmente l'orario."}</p>` : ""}
       <div class="block" style="margin-top:0"><h2>Campi</h2><div class="stepper">
         <button data-act="evcampi" data-v="-1">−</button><b id="ev_campi">${sheet.tmp.campi}</b>
         <button data-act="evcampi" data-v="1">+</button></div></div>
