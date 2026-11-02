@@ -82,10 +82,11 @@ test("le vittorie della stessa edizione sono distinte tra i due campionati masch
   assert.match(a.run("stelle('q')"),/Intermedio/);
 });
 
-test("sono abilitati soltanto gli eventi maschili, con punteggi e finali ancora in attesa", () => {
+test("gli eventi dei quattro campionati sono manuali, con punteggi e finali ancora in attesa", () => {
   const a=app();a.run("D.settings.regolePronte=false");
   assert.equal(a.run("eventiAbilitati(avanzato)"),true);
   assert.equal(a.run("eventiAbilitati(intermedio)"),true);
-  assert.equal(a.run("eventiAbilitati(D.champs.find(c=>c.type==='femminile'))"),false);
+  assert.equal(a.run("eventiAbilitati(D.champs.find(c=>c.type==='femminile'))"),true);
+  assert.equal(a.run("eventiAbilitati(D.champs.find(c=>c.type==='misto'))"),true);
   assert.equal(a.run("regolePronte()"),false);
 });

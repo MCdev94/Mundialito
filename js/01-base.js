@@ -5,14 +5,22 @@ const APP_STRUCTURE = "male-divisions-v1";
 const KEY = "gone-padel-cup.v2";
 const regolePronte = () => D.settings.regolePronte === true;
 const divisioneMaschile = ch => ch.type === "maschile" && ["avanzato", "intermedio"].includes(ch.divisione);
-const eventiAbilitati = (ch = C()) => regolePronte() || divisioneMaschile(ch);
+const eventiAbilitati = (ch = C()) => regolePronte() || ["maschile", "femminile", "misto"].includes(ch.type);
 const nomeDivisione = d => d === "intermedio" ? "Intermedio" : "Avanzato";
 function orarioEvento(ch, data){
-  if(!divisioneMaschile(ch) || !/^\d{4}-\d{2}-\d{2}$/.test(data || "")) return "";
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(data || "")) return "";
   const giorno = new Date(data + "T12:00:00").getDay();
+  if(ch.type === "femminile") return giorno === 4 ? "20:00" : "";
+  if(ch.type === "misto") return giorno === 0 ? "14:30" : "";
+  if(!divisioneMaschile(ch)) return "";
   if(giorno === 2) return ch.divisione === "avanzato" ? "20:00–21:30" : "21:30–23:00";
   if(giorno === 6) return ch.divisione === "avanzato" ? "14:00–15:30" : "15:30–17:00";
   return "";
+}
+function notaOrarioEvento(ch, data){
+  if(orarioEvento(ch,data)) return "Orario precompilato e modificabile.";
+  const giorni = ch.type === "femminile" ? "giovedì" : ch.type === "misto" ? "domenica" : "martedì e sabato";
+  return "Giorno diverso da " + giorni + ": imposta manualmente l'orario.";
 }
 const app = document.getElementById("app");
 const tabsEl = document.getElementById("tabs");

@@ -21,7 +21,9 @@ function filtriMaschili(){
   return `<div class="chips divisioni" role="group" aria-label="Campionato maschile">
     ${["avanzato","intermedio"].map(d => `<button class="chip" data-act="divisionemaschile" data-v="${d}" aria-pressed="${C().divisione === d}">${nomeDivisione(d)}</button>`).join("")}</div>`;
 }
-function programmaMaschile(ch = C()){
+function programmaCampionato(ch = C()){
+  if(ch.type === "femminile") return "Giovedì alle 20:00";
+  if(ch.type === "misto") return "Domenica alle 14:30";
   return ch.divisione === "avanzato" ? "Martedì 20:00–21:30 · Sabato 14:00–15:30"
     : "Martedì 21:30–23:00 · Sabato 15:30–17:00";
 }
@@ -36,7 +38,7 @@ function renderGiornate(){
       <h1 class="top__title">Giornate</h1>
       <p class="top__meta">${giornateChiuse(c)} giocate${list.length ? " · " + list.length + " in corso" : ""}</p>
     </div></div>${filtriMaschili()}</header>
-  ${divisioneMaschile(c) ? `<p class="hint">${programmaMaschile(c)}. Partecipanti scelti dal gestore per ogni evento.</p>` : ""}
+  <p class="hint">${programmaCampionato(c)}. Partecipanti scelti dal gestore per ogni evento.</p>
   ${!eventiAbilitati(c) ? `<p class="empty">GonéPadelCup è pronta: giocatori conservati e classifiche azzerate. Le nuove regole saranno configurate nel prossimo aggiornamento.</p>` : canWrite() ? `<button class="btn" data-act="newev">Nuova giornata</button>`
     : `<p class="empty">Stai guardando in sola lettura. Per gestire le giornate entra da Altro → Accedi come gestore.</p>`}
   <div class="block">
@@ -299,7 +301,7 @@ function notaBonus(c, premiati){
     + (premiati ? `Finora l'hanno raggiunto in ${premiati}: hanno il punteggio nel bollino rosso.` : "Per ora non l'ha raggiunto nessuno.");
 }
 function tabellaClassifica(list = classificaFinal8(), ch = C()){
-  if(!list.length) return `<p class="empty">${divisioneMaschile(ch) ? "Nessun partecipante ancora. Aggiungi i nomi a un evento di questo campionato." : "Ancora nessuna giornata chiusa qui."}</p>`;
+  if(!list.length) return `<p class="empty">${divisioneMaschile(ch) || !regolePronte() ? "Nessun partecipante ancora. Aggiungi i nomi a un evento di questo campionato." : "Ancora nessuna giornata chiusa qui."}</p>`;
   return `<p class="hint">${regolePronte() ? `Final 8: ${ch.type === "misto" ? "primi 4 uomini e prime 4 donne" : "prime 8 posizioni"} in evidenza.` : "Partecipanti a questo campionato. Punteggi in attesa delle nuove regole."}</p>
   <table class="table table--classifica"><thead><tr><th>${ch.type === "femminile" ? "Giocatrice" : "Giocatore"}</th><th>Punti</th><th>Presenze</th></tr></thead>
    <tbody>${list.map((r,i) => `<tr class="rowtap ${r.final8?"final8":""}" data-act="player" data-id="${r.id}">

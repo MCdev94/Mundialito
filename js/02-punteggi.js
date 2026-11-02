@@ -213,7 +213,7 @@ function classifica(ch){
 
 /* Una sola selezione per schermata, stampe e creazione della Final 8. */
 function classificaFinal8(ch = C()){
-  const lista = classifica(ch).filter(r => divisioneMaschile(ch) ? partecipaAlCampionato(r.id, ch) : r.pres > 0);
+  const lista = classifica(ch).filter(r => partecipaAlCampionato(r.id, ch));
   if(!regolePronte()) return lista.map((r,i) => ({...r,pos:i+1,final8:false}));
   const qualificati = new Set((ch.type === "misto"
     ? ["M", "F"].flatMap(sesso => lista.filter(r => r.sex === sesso).slice(0, 4))

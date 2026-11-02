@@ -35,11 +35,11 @@ document.addEventListener("input", e => {
     if(e.target.matches('[data-act="eventora"]')) sheet.tmp.ora = e.target.value;
     if(e.target.matches('[data-act="eventdate"]')){
       sheet.tmp.date = e.target.value;
-      if(divisioneMaschile(C())){
+      if(eventiAbilitati(C())){
         sheet.tmp.ora = orarioEvento(C(),sheet.tmp.date);
         document.getElementById("ev_ora").value = sheet.tmp.ora;
         const nota = document.getElementById("notaOrario");
-        if(nota) nota.textContent = sheet.tmp.ora ? "Orario precompilato e modificabile." : "Giorno diverso da martedì e sabato: imposta manualmente l'orario.";
+        if(nota) nota.textContent = notaOrarioEvento(C(),sheet.tmp.date);
       }
     }
   }

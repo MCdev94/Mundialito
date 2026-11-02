@@ -180,11 +180,11 @@ function renderSheet(){
     const v = {name:sheet.tmp.name ?? (ev && ev.name) ?? "", date:sheet.tmp.date ?? (ev && ev.date) ?? oggi(),
       ora:sheet.tmp.ora ?? (ev && ev.ora) ?? orarioEvento(C(),sheet.tmp.date || oggi())};
     inner = `<h3>${ev?"Modifica giornata":"Nuova giornata"}</h3>
-      ${divisioneMaschile(C()) ? `<p class="hint">${nomeDivisione(C().divisione)} · ${programmaMaschile()}</p>` : ""}
+      <p class="hint">${divisioneMaschile(C()) ? nomeDivisione(C().divisione) + " · " : ""}${programmaCampionato()}</p>
       <label class="fld"><span>Nome</span><input id="ev_name" data-act="eventname" value="${esc(v.name)}" placeholder="${giornateChiuse()+1}ª giornata"></label>
       <div class="row2"><label class="fld" style="flex:2"><span>Data</span><input id="ev_date" data-act="eventdate" type="date" value="${v.date}"></label>
         <label class="fld" style="flex:2"><span>Orario</span><input id="ev_ora" data-act="eventora" value="${esc(v.ora||"")}" placeholder="es. 20:00–21:30"></label></div>
-      ${divisioneMaschile(C()) ? `<p class="hint" id="notaOrario">${orarioEvento(C(),v.date) ? "Orario precompilato e modificabile." : "Giorno diverso da martedì e sabato: imposta manualmente l'orario."}</p>` : ""}
+      <p class="hint" id="notaOrario">${notaOrarioEvento(C(),v.date)}</p>
       <div class="block" style="margin-top:0"><h2>Campi</h2><div class="stepper">
         <button data-act="evcampi" data-v="-1">−</button><b id="ev_campi">${sheet.tmp.campi}</b>
         <button data-act="evcampi" data-v="1">+</button></div></div>

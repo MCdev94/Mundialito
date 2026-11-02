@@ -4,6 +4,8 @@ GonéPadelCup: maschile Avanzato e Intermedio, femminile e misto. I due campiona
 
 Eventi maschili creati soltanto dal gestore. Orari precompilati e modificabili: martedì Avanzato 20:00–21:30 e Intermedio 21:30–23:00; sabato Avanzato 14:00–15:30 e Intermedio 15:30–17:00. Negli altri giorni l'orario è manuale.
 
+Anche femminile e misto hanno eventi manuali: femminile giovedì alle 20:00, misto domenica alle 14:30. La partecipazione alla classifica deriva dai nomi inseriti negli eventi del relativo campionato; nessun evento viene creato automaticamente.
+
 App statica pubblicata con GitHub Pages, dati su Supabase. Nessuna compilazione: i file del repository sono esattamente quelli che il browser carica.
 
 ## Struttura
@@ -37,7 +39,7 @@ Gli script sono normali file JavaScript che condividono lo stesso ambiente e van
 - **Il bonus non si scrive nei punti**: nel database restano i punti fatti in campo; il bonus si applica sopra con soglia e punti del riquadro BONUS. Così cambiando i numeri o annullando una giornata tutto si ricalcola giusto.
 - **Nessun albo incorporato**: vittorie e stelle derivano soltanto dai dati della nuova competizione.
 - **Separazione delle competizioni**: memoria locale e coda nuove; i backup precedenti non si importano. Il database ammette le scritture soltanto dai client con la nuova generazione, oltre all'accesso autenticato già richiesto.
-- **Nuove regole**: `settings.regolePronte` resta `false` fino alla prossima configurazione. Anagrafica, creazione manuale degli eventi maschili e scelta dei partecipanti sono disponibili; le operazioni che attribuiscono punti restano bloccate.
+- **Nuove regole**: `settings.regolePronte` resta `false` fino alla prossima configurazione. Anagrafica, creazione manuale degli eventi e scelta dei partecipanti sono disponibili; le operazioni che attribuiscono punti restano bloccate.
 - **Divisioni**: la chiave del campionato è `type` + `divisione`. Non unire i maschili soltanto perché hanno lo stesso `type`. L'albo usa `champ_id` per distinguere le edizioni delle due categorie.
 
 ## Test
