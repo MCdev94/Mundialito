@@ -9,7 +9,7 @@ function edizioneDi(ch){
   ch = ch || C();
   const salvata = D.settings.edizioni && D.settings.edizioni[ch.id];
   if(salvata !== undefined && salvata !== null) return String(salvata);
-  const m = (ch.ed || "").match(/\d+/); return m ? m[0] : "";
+  const m = (ch.ed || "").match(/\d+/); return m ? m[0] : "1";
 }
 function edNum(ch){ return edizioneDi(ch); }
 

@@ -64,7 +64,7 @@ function pulisciDatiPrecedenti(){
 }
 function fresh(){
   const d = {v:2, settings:{campi:5, generation:APP_GENERATION, structure:APP_STRUCTURE, regolePronte:true, firma:"GonéPadelCup"}, players:[], champs:[], albo:[], cur:null};
-  d.champs.push({id:uid(), name:"GonéPadelCup Maschile Avanzato", ed:"", type:"maschile", divisione:"avanzato",
+  d.champs.push({id:uid(), name:"GonéPadelCup Maschile Avanzato", ed:"1", type:"maschile", divisione:"avanzato",
     ...REGOLE_BASE.maschile, carry:{}, events:[]});
   d.cur = d.champs[0].id;
   return d;

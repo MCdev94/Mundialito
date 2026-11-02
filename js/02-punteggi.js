@@ -88,7 +88,7 @@ function normalizzaTornei(){
       .sort((a,b) => pesoTorneo(b) - pesoTorneo(a));
     let main = gruppo[0];
     if(!main){
-      main = {id:uid(), name:nome, ed:"", type:tipo, divisione, ...REGOLE_BASE[tipo], base:0,
+      main = {id:uid(), name:nome, ed:"1", type:tipo, divisione, ...REGOLE_BASE[tipo], base:0,
               carry:{}, bonusAss:null, ultima:null, events:[]};
       cambiato = true;
     }

@@ -5,6 +5,7 @@ import {nuovaApp,conDati} from "./ambiente.mjs";
 test("le regole precedenti sono attive, con parametri separati per i quattro campionati", () => {
   const a=nuovaApp();a.run("D=fresh();normalizzaTornei()");
   assert.equal(a.run("regolePronte()"),true);
+  assert.ok(a.run("D.champs.every(c=>edizioneDi(c)==='1'&&!c.dataFinale&&!c.oraFinale)"));
   assert.deepEqual(a.run("D.champs.map(c=>[c.soglia,c.bonus,c.settimane,giornatePreviste(c)])"),
     [[8,5,10,20],[8,5,10,20],[4,5,7,7],[5,5,7,7]]);
   assert.ok(a.run("D.champs.every(c=>c.events.length===0&&Object.keys(c.carry).length===0)"));
@@ -32,7 +33,7 @@ test("titoli delle locandine e delle classifiche usano il nome del campionato co
       C().events.push({id:'g',name:'Giornata',date:'2026-11-03',status:'bozza',created:1,presenti:selezionati,
         pairs:Array.from({length:4},(_,i)=>[selezionati[i*2],selezionati[i*2+1]]),matches:[],seeds:{},storico:[]});buildBoard(EV('g'))`);
     const titolo=a.run("C().name.toUpperCase()");
-    await a.run("drawLocandina(EV('g'))");assert.ok(testi.some(t=>String(t).trim()===titolo));
-    testi.length=0;await a.run("drawClassifica()");assert.ok(testi.includes(titolo));
+    await a.run("drawLocandina(EV('g'))");assert.ok(testi.some(t=>String(t).trim()===titolo+' 1'));
+    testi.length=0;await a.run("drawClassifica()");assert.ok(testi.includes('1° '+titolo));
   }
 });
