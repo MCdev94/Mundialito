@@ -93,13 +93,8 @@ document.addEventListener("click", e => {
   if(a === "closesheet"){ sheet = null; render(); return; }
 
   /* campionati */
-  if(a === "divisionemaschile"){
-    const nuovo = D.champs.find(x => x.type === "maschile" && x.divisione === el.dataset.v);
-    if(!nuovo) return;
-    D.cur = nuovo.id; sheet = null; openEvent = null; search = ""; salvaLocale(); render(); return;
-  }
   if(a === "champs"){ sheet = {tipo:"champs"}; render(); return; }
-  if(a === "setchamp"){ D.cur = el.dataset.id; sheet = null; openEvent = null; tab = "giornate"; search = ""; save(); render(); return; }
+  if(a === "setchamp"){ D.cur = el.dataset.id; sheet = null; openEvent = null; search = ""; salvaLocale(); render(); return; }
   if(a === "newchamp"){ return; }
   if(a === "chtype"){ sheet.tmp.type = el.dataset.v; render(); return; }
   if(a === "chset"){

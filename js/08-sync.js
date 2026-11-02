@@ -209,5 +209,5 @@ function testoSync(){
   if(canWrite()) return "Modalità gestore: ogni modifica finisce subito sul database." + coda;
   return "Sola lettura: vedi i dati aggiornati ma non puoi modificarli.";
 }
-const AZIONI_LETTURA = new Set(["home","closesheet","champs","setchamp","divisionemaschile","openev","step","player","albovedi",
+const AZIONI_LETTURA = new Set(["home","closesheet","champs","setchamp","openev","step","player","albovedi",
   "loca","stampaclass","loca-png","loca-pdf","loca-share","shareclass","shareev","export","sync","login","logout","dologin"]);

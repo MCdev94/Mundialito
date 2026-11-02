@@ -31,7 +31,6 @@ button{cursor:pointer;}
 .top__row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .top__title{margin:0;font-size:21px;font-weight:700;letter-spacing:-.01em;}
 .top__meta{margin:2px 0 0;color:var(--ink-soft);font-size:13.5px;}
-.divisioni{margin-top:12px;}
 .stato-partecipazione{display:block;color:var(--ink-soft);font-size:12px;font-weight:400;margin-top:3px;}
 .aggiorna-classifica{display:grid;place-items:center;flex:none;width:44px;height:44px;
   padding:10px;border:0;border-radius:50%;background:transparent;color:var(--court);}

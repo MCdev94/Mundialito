@@ -16,11 +16,6 @@ function champBtn(){
   const c = C();
   return `<button class="champsel" data-act="champs"><span class="${dotCls(c.type)}"></span>${esc(c.name)} ▾</button>`;
 }
-function filtriMaschili(){
-  if(!divisioneMaschile(C())) return "";
-  return `<div class="chips divisioni" role="group" aria-label="Campionato maschile">
-    ${["avanzato","intermedio"].map(d => `<button class="chip" data-act="divisionemaschile" data-v="${d}" aria-pressed="${C().divisione === d}">${nomeDivisione(d)}</button>`).join("")}</div>`;
-}
 function programmaCampionato(ch = C()){
   if(ch.type === "femminile") return "Giovedì alle 20:00";
   if(ch.type === "misto") return "Domenica alle 14:30";
@@ -37,7 +32,7 @@ function renderGiornate(){
     <div class="top__row"><div>
       <h1 class="top__title">Giornate</h1>
       <p class="top__meta">${giornateChiuse(c)} giocate${list.length ? " · " + list.length + " in corso" : ""}</p>
-    </div></div>${filtriMaschili()}</header>
+    </div></div></header>
   <p class="hint">${programmaCampionato(c)}. Partecipanti scelti dal gestore per ogni evento.</p>
   ${!eventiAbilitati(c) ? `<p class="empty">GonéPadelCup è pronta: giocatori conservati e classifiche azzerate. Le nuove regole saranno configurate nel prossimo aggiornamento.</p>` : canWrite() ? `<button class="btn" data-act="newev">Nuova giornata</button>`
     : `<p class="empty">Stai guardando in sola lettura. Per gestire le giornate entra da Altro → Accedi come gestore.</p>`}
@@ -256,7 +251,7 @@ function renderClassifica(){
     <button type="button" class="aggiorna-classifica" data-act="sync" aria-label="Aggiorna classifica"
       title="Aggiorna classifica" aria-busy="${SYNC.stato === "corso"}" ${SYNC.stato === "corso" ? "disabled" : ""}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17"/></svg>
-    </button></div>${filtriMaschili()}</header>
+    </button></div></header>
 
   ${regolePronte() ? `<section class="bonus">
     <h2 class="bonus__t">BONUS</h2>
@@ -322,7 +317,7 @@ function renderGiocatori(){
     <p class="top__meta">${list.length} disponibili per questo campionato${fuori?` · ${fuori} ritirati`:""}</p>
     ${alboCompleto().length ? `<p class="legenda"><span><span class="stella stella--maschile">★</span> Maschile</span>
       <span><span class="stella stella--femminile">★</span> Femminile</span>
-      <span><span class="stella stella--misto">★</span> Misto</span></p>` : ""}</div></div>${filtriMaschili()}</header>
+      <span><span class="stella stella--misto">★</span> Misto</span></p>` : ""}</div></div></header>
   <label class="fld"><input id="q" placeholder="Cerca un nome" value="${esc(search)}" data-act="search" autocomplete="off"></label>
   <form class="row2" data-act="addp2">
     <input id="newp2" placeholder="${c.type === "femminile" ? "Nuova giocatrice" : "Nuovo giocatore"}" autocomplete="off" enterkeyhint="done"
